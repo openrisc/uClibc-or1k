@@ -391,7 +391,7 @@ $(ldso):
 $(libc):
 	$(Q)cd $(top_builddir); $(MAKE) lib/$(patsubst %.$(ABI_VERSION),%,$(notdir $@))
 
-CRT := crt0
+CRT := crt1
 
 ifeq ($(HAVE_SHARED)$(UCLIBC_FORMAT_SHARED_FLAT),y)
 CRTS=$(top_builddir)lib/$(CRT).o $(top_builddir)lib/S$(CRT).o
