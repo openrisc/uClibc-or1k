@@ -1,6 +1,12 @@
-/* Startup code for ARM & ELF
-   Copyright (C) 1995, 1996, 1997, 1998, 2001, 2002, 2005
+/* Copyright (C) 1995, 1996, 1997, 1998, 2001, 2002, 2005
    Free Software Foundation, Inc.
+
+   Copyright (C) 2010 Embecosm Limited
+
+   Contributor  Jeremy Bennett <jeremy.bennett@embecosm.com>
+   Contributor  Joern Rennecke <joern.rennecke@embecosm.com>
+   With other contributions from the OpenCores community.
+
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -35,18 +41,13 @@
    Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
    02111-1307 USA.  */
 
+/* Stick in a dummy reference to main(), so that if an application
+ * is linking when the main() function is in a static library (.a)
+ * we can be sure that main() actually gets linked in */
+.type main,%function
+
 /* This is the canonical entry point, usually the first thing in the text
    segment.
-
-	Note that the code in the .init section has already been run.
-	This includes _init and _libc_init
-
-	At this entry point, most registers' values are unspecified, except:
-
-   r3		Contains a function pointer to be registered with `atexit'.
-		This is how the dynamic linker arranges to have DT_FINI
-		functions called for shared libraries that have been loaded
-		before this code runs.
 
    sp		The stack contains the arguments and environment:
 		0(sp)			argc
@@ -57,67 +58,27 @@
 		...
 					NULL
 */
-/*
-   For uClinux it looks like this:
-
-        argc            argument counter (integer)
-        argv            char *argv[]
-        envp            char *envp[]
-        argv[0]         program name (pointer)
-        argv[1...N]     program args (pointers)
-        argv[argc-1]    end of args (integer)
-	NULL
-        env[0...N]      environment variables (pointers)
-        NULL
-
-ARM register quick reference:
-
-    Name    Number       ARM Procedure Calling Standard Role
-
-    a1      r0           argument 1 / integer result / scratch register / argc
-    a2      r1           argument 2 / scratch register / argv
-    a3      r2           argument 3 / scratch register / envp
-    a4      r3           argument 4 / scratch register
-    v1      r4           register variable
-    v2      r5           register variable
-    v3      r6           register variable
-    v4      r7           register variable
-    v5      r8           register variable
-    sb/v6   r9           static base / register variable
-    sl/v7   r10          stack limit / stack chunk handle / reg. variable
-    fp      r11          frame pointer
-    ip      r12          scratch register / new-sb in inter-link-unit calls
-    sp      r13          lower end of current stack frame
-    lr      r14          link address / scratch register
-    pc      r15          program counter
-*/
 
 #include <features.h>
 
 .text
 	.globl	_start
 	.type	_start,%function
-	.type   main,%function
-	.type	_init,%function
-	.type	_fini,%function
-#ifndef __UCLIBC_CTOR_DTOR__
-	.weak	_init
-	.weak	_fini
-#endif
 
+.global _start
 _start:
-	/* Clear the frame pointer and link register since this is the
-	 * outermost frame.
-	 */
-	l.add r2,r0,r0
-	l.add r9,r0,r0
 
-	/* Take values for argc and argv off the stack.
-	 * These will be passed as arguments two and three to __uClibc_main
-	 * and thus go in registers r4 and r5, respectively
-	 */
-	l.lwz r4,0(r1)
-	l.addi r5,r4,4
+#ifdef __PIC__
+	/* Obtain a pointer to .got in r16 */
+	l.jal	.LPC0
+#ifndef __OR1K_NODELAY__
+	l.nop
+#endif
+.LPC0:
+	l.movhi	r16, gotpchi(_GLOBAL_OFFSET_TABLE_+(.-.LPC0))
+	l.ori	r16, r16, gotpclo(_GLOBAL_OFFSET_TABLE_+(.-.LPC0))
+	l.add	r16, r16, r9
+#endif
 
 	/* Push stack limit onto the stack */
 	/* Provides highest stack address to user code (as stack grows
@@ -127,63 +88,52 @@ _start:
 	 */
 	l.sw  -4(r1),r1
 
-	/* Put rtld_fini (shared library termination function) in
-	 * register 8 as it's the sixth argument to __uClibc_main
+	/* Take values for argc and argv off the stack.
+	 * These will be passed as arguments two and three to __uClibc_main
+	 * and thus go in registers r4 and r5, respectively
 	 */
-	l.add r8,r3,r0
+	l.lwz  r4,0(r1)
+	l.addi r5,r1,4
 
 #ifdef __PIC__
-#if 0
-WORRY ABOUT THIS LATER... NO PIC FOR NOW
-	ldr sl, .L_GOT
-.L_GOT_OFF:
-	add sl, pc, sl
-
-	ldr ip, .L_GOT+4	/* _fini */
-	ldr a1, [sl, ip]
-	str a1, [sp, #-4]!	/* Push _fini */
-
-	ldr ip, .L_GOT+8	/* _init */
-	ldr a4, [sl, ip]
-	
-	ldr ip, .L_GOT+12	/* main */
-	ldr a1, [sl, ip]
-
-	/* __uClibc_main (main, argc, argv, init, fini, rtld_fini, stack_end) */
-	/* Let the libc call main and exit with its return code.  */
-	b __uClibc_main(PLT)
-#endif
+	l.lwz	r3,got(main)(r16)
 #else
-	/* Address of fini goes to r7 */
-	l.movhi r7,hi(_fini)
-	l.ori   r7,r7,lo(_fini)	
-
-	/* Address of init goes to r6 */
-	l.movhi r6,hi(_init)
-	l.ori   r6,r6,lo(_init)	
-
-	/* Address of main goes to r3 */
 	l.movhi r3,hi(main)
-	l.ori   r3,r3,lo(main)	
+	l.ori   r3,r3,lo(main)
+#endif
 
-	/* __uClibc_main (main, argc, argv, init, fini, rtld_fini, stack_end) */
+	/* Put the constructor and destructor initialization as args four and
+	   five into r6 and r7 */
+#ifdef __PIC__
+	l.lwz	r6, got(__init)(r16)
+	l.lwz	r7, got(__fini)(r16)
+#else
+	l.movhi	r6,hi(__init)
+	l.ori	r6,r6,lo(__init)
+	l.movhi	r7,hi(__fini)
+	l.ori	r7,r7,lo(__fini)
+#endif
+
+	/* rtld_fini = NULL */
+	l.movhi	r8, 0
+
+	/* Adjust stack to account for a total of 7 args (i.e. the last one is
+	   on the stack. */
+	l.addi  r1,r1,-4
+
+	/* Clear the frame pointer and link register since this is the
+	 * outermost frame.
+	 */
+	l.add r2,r0,r0
+	l.add r9,r0,r0
 
 	/* Let the libc call main and exit with its return code.  */
-	l.j __uClibc_main
-	 l.nop
-#endif
-
-	/* should never get here....*/
-	l.j abort
-	 l.nop
-
 #ifdef __PIC__
-.L_GOT:
-	.word	_GLOBAL_OFFSET_TABLE_-(.L_GOT_OFF+8)
-	.word _fini(GOT)
-	.word _init(GOT)
-	.word main(GOT)
+	l.j	plt(__uClibc_main)
+#else
+	l.j	__uClibc_main
 #endif
+	 l.nop
 
 /* Define a symbol for the first piece of initialized data.  */
 	.data
