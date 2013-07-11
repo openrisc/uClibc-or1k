@@ -105,13 +105,13 @@ _start:
 	/* Put the constructor and destructor initialization as args four and
 	   five into r6 and r7 */
 #ifdef __PIC__
-	l.lwz	r6, got(__init)(r16)
-	l.lwz	r7, got(__fini)(r16)
+	l.lwz	r6, got(_init)(r16)
+	l.lwz	r7, got(_fini)(r16)
 #else
-	l.movhi	r6,hi(__init)
-	l.ori	r6,r6,lo(__init)
-	l.movhi	r7,hi(__fini)
-	l.ori	r7,r7,lo(__fini)
+	l.movhi	r6,hi(_init)
+	l.ori	r6,r6,lo(_init)
+	l.movhi	r7,hi(_fini)
+	l.ori	r7,r7,lo(_fini)
 #endif
 
 	/* rtld_fini = NULL */
