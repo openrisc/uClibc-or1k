@@ -168,6 +168,10 @@ _dl_do_reloc(struct elf_resolve *tpnt, struct r_scope_elem *scope,
 	ElfW(Addr) old_val;
 #endif
 
+	struct unaligned {
+		Elf32_Addr x;
+	} __attribute__ ((packed, may_alias));
+
 	reloc_addr = (ElfW(Addr)*)(tpnt->loadaddr + (unsigned long)rpnt->r_offset);
 	reloc_type = ELF_R_TYPE(rpnt->r_info);
 	symtab_index = ELF_R_SYM(rpnt->r_info);
@@ -205,7 +209,7 @@ _dl_do_reloc(struct elf_resolve *tpnt, struct r_scope_elem *scope,
 
 #if defined (__SUPPORT_LD_DEBUG__)
 	if (reloc_addr) {
-		old_val = *reloc_addr;
+		old_val = ((struct unaligned *)reloc_addr)->x;
 	} else {
 		old_val = 0;
 	}
@@ -218,7 +222,9 @@ _dl_do_reloc(struct elf_resolve *tpnt, struct r_scope_elem *scope,
 		case R_OR1K_8:
 		case R_OR1K_16:
 		case R_OR1K_32:
-			*reloc_addr = symbol_addr + rpnt->r_addend;
+			/* Support relocations on mis-aligned offsets.  */
+			((struct unaligned *)reloc_addr)->x = symbol_addr +
+				rpnt->r_addend;
 			break;
 
 		case R_OR1K_8_PCREL:
@@ -264,7 +270,8 @@ _dl_do_reloc(struct elf_resolve *tpnt, struct r_scope_elem *scope,
 #if defined (__SUPPORT_LD_DEBUG__)
 	if (_dl_debug_reloc && _dl_debug_detail)
 		_dl_dprintf(_dl_debug_file, "\tpatched: %x ==> %x @ %x\n",
-			    old_val, *reloc_addr, reloc_addr);
+			    old_val, ((struct unaligned *)reloc_addr)->x,
+			    reloc_addr);
 #endif
 
 	return 0;
