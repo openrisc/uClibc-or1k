@@ -229,7 +229,7 @@ UCLIBC_BUILD_NOEXECSTACK=y
 #
 # Development/debugging options
 #
-CROSS_COMPILER_PREFIX="or1k-linux-"
+CROSS_COMPILER_PREFIX="or1k-linux-uclibc-"
 UCLIBC_EXTRA_CFLAGS=""
 # DODEBUG is not set
 # DODEBUG_PT is not set
