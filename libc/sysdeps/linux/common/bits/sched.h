@@ -15,9 +15,8 @@
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
 #ifndef __need_schedparam
 
@@ -109,6 +108,7 @@ struct __sched_param
 /* Size definition for CPU sets.  */
 # define __CPU_SETSIZE	1024
 # define __NCPUBITS	(8 * sizeof (__cpu_mask))
+# include <stdlib.h>
 
 /* Type for array elements in 'cpu_set_t'.  */
 typedef unsigned long int __cpu_mask;

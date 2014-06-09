@@ -14,9 +14,8 @@
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
 #ifndef _XLOCALE_H
 #define _XLOCALE_H	1
@@ -39,11 +38,11 @@ typedef struct __locale_struct
   /* Note: LC_ALL is not a valid index into this array.  */
   const char *__names[13];
 } *__locale_t;
+#else
+# include <bits/uClibc_locale.h>
+#endif
 
 /* POSIX 2008 makes locale_t official.  */
 typedef __locale_t locale_t;
-#else
-# include <locale.h>
-#endif
 
 #endif /* xlocale.h */

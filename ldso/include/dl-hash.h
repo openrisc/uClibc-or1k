@@ -5,8 +5,8 @@
  * GNU Lesser General Public License version 2.1 or later.
  */
 
-#ifndef _LD_HASH_H_
-#define _LD_HASH_H_
+#ifndef _DL_HASH_H
+#define _DL_HASH_H
 
 #ifndef RTLD_NEXT
 #define RTLD_NEXT	((void*)-1)
@@ -139,6 +139,12 @@ struct elf_resolve {
      memory when the module is dlclose()d.  */
   struct funcdesc_ht *funcdesc_ht;
 #endif
+#ifdef __DSBT__
+  /* Information for DSBT */
+  void **dsbt_table;
+  unsigned long dsbt_size;
+  unsigned long dsbt_index;
+#endif
 };
 
 #define RELOCS_DONE	    0x000001
@@ -160,17 +166,7 @@ extern char *_dl_find_hash(const char *name, struct r_scope_elem *scope,
 		struct elf_resolve *mytpnt, int type_class,
 		struct symbol_ref *symbol);
 
-extern int _dl_linux_dynamic_link(void);
-
 extern char * _dl_library_path;
-extern char * _dl_not_lazy;
-
-static __inline__ int _dl_symbol(char * name)
-{
-  if (name[0] != '_' || name[1] != 'd' || name[2] != 'l' || name[3] != '_')
-    return 0;
-  return 1;
-}
 
 #define LD_ERROR_NOFILE 1
 #define LD_ERROR_NOZERO 2
@@ -184,4 +180,4 @@ static __inline__ int _dl_symbol(char * name)
 #define LD_BAD_HANDLE 10
 #define LD_NO_SYMBOL 11
 
-#endif /* _LD_HASH_H_ */
+#endif /* _DL_HASH_H */

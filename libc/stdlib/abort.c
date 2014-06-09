@@ -13,8 +13,7 @@ Library General Public License for more details.
 
 You should have received a copy of the GNU Library General Public
 License along with the GNU C Library; see the file COPYING.LIB.  If
-not, write to the Free Software Foundation, Inc., 675 Mass Ave,
-Cambridge, MA 02139, USA.  */
+not, see <http://www.gnu.org/licenses/>.  */
 
 /* Hacked up for uClibc by Erik Andersen */
 
@@ -47,9 +46,6 @@ static __always_inline int not_null_ptr(const void *p)
 # warning "no abort instruction defined for your arch"
 #endif
 
-#ifdef __UCLIBC_HAS_STDIO_SHUTDOWN_ON_ABORT__
-extern void weak_function _stdio_term(void) attribute_hidden;
-#endif
 static smallint been_there_done_that = 0;
 
 /* Be prepared in case multiple threads try to abort() */

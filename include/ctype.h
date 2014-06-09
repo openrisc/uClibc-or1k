@@ -13,9 +13,8 @@
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
 /*
  *	ISO C99 Standard 7.4: Character handling	<ctype.h>
@@ -405,8 +404,8 @@ __END_DECLS
 
 #endif /* __UCLIBC_HAS_CTYPE_TABLES__ */
 
-/* We define {__,}isascii for internal use only */
 #if defined _LIBC && !defined __UCLIBC_SUSV4_LEGACY__
+/* We define {__,}isascii for internal use only */
 # define __isascii(c) (((c) & ~0x7f) == 0)
 # define isascii(c) __isascii (c)
 #endif

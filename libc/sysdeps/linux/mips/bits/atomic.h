@@ -13,9 +13,8 @@
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
 #ifndef _MIPS_BITS_ATOMIC_H
 #define _MIPS_BITS_ATOMIC_H 1
@@ -84,10 +83,10 @@ typedef uintmax_t uatomic_max_t;
    in which values are returned.  */
 
 #define __arch_compare_and_exchange_xxx_8_int(mem, newval, oldval, rel, acq) \
-  (abort (), __prev = __cmp = 0)
+  (abort (), __prev = 0, __cmp = 0)
 
 #define __arch_compare_and_exchange_xxx_16_int(mem, newval, oldval, rel, acq) \
-  (abort (), __prev = __cmp = 0)
+  (abort (), __prev = 0, __cmp = 0)
 
 #define __arch_compare_and_exchange_xxx_32_int(mem, newval, oldval, rel, acq) \
      __asm__ __volatile__ (						      \
@@ -111,7 +110,7 @@ typedef uintmax_t uatomic_max_t;
 #if _MIPS_SIM == _ABIO32
 /* We can't do an atomic 64-bit operation in O32.  */
 #define __arch_compare_and_exchange_xxx_64_int(mem, newval, oldval, rel, acq) \
-  (abort (), __prev = __cmp = 0)
+  (abort (), __prev = 0, __cmp = 0)
 #else
 #define __arch_compare_and_exchange_xxx_64_int(mem, newval, oldval, rel, acq) \
      __asm__ __volatile__ ("\n"						      \
@@ -136,22 +135,22 @@ typedef uintmax_t uatomic_max_t;
 /* For all "bool" routines, we return FALSE if exchange succesful.  */
 
 #define __arch_compare_and_exchange_bool_8_int(mem, new, old, rel, acq)	\
-({ __typeof (*mem) __prev; int __cmp;					\
+({ __typeof (*mem) __prev attribute_unused; int __cmp;		\
    __arch_compare_and_exchange_xxx_8_int(mem, new, old, rel, acq);	\
    !__cmp; })
 
 #define __arch_compare_and_exchange_bool_16_int(mem, new, old, rel, acq) \
-({ __typeof (*mem) __prev; int __cmp;					\
+({ __typeof (*mem) __prev attribute_unused; int __cmp;		\
    __arch_compare_and_exchange_xxx_16_int(mem, new, old, rel, acq);	\
    !__cmp; })
 
 #define __arch_compare_and_exchange_bool_32_int(mem, new, old, rel, acq) \
-({ __typeof (*mem) __prev; int __cmp;					\
+({ __typeof (*mem) __prev attribute_unused; int __cmp;		\
    __arch_compare_and_exchange_xxx_32_int(mem, new, old, rel, acq);	\
    !__cmp; })
 
 #define __arch_compare_and_exchange_bool_64_int(mem, new, old, rel, acq) \
-({ __typeof (*mem) __prev; int __cmp;					\
+({ __typeof (*mem) __prev attribute_unused; int __cmp;		\
    __arch_compare_and_exchange_xxx_64_int(mem, new, old, rel, acq);	\
    !__cmp; })
 
@@ -159,22 +158,22 @@ typedef uintmax_t uatomic_max_t;
    successful or not.  */
 
 #define __arch_compare_and_exchange_val_8_int(mem, new, old, rel, acq)	\
-({ __typeof (*mem) __prev; int __cmp;					\
+({ __typeof (*mem) __prev attribute_unused; int __cmp attribute_unused;	\
    __arch_compare_and_exchange_xxx_8_int(mem, new, old, rel, acq);	\
    (__typeof (*mem))__prev; })
 
 #define __arch_compare_and_exchange_val_16_int(mem, new, old, rel, acq) \
-({ __typeof (*mem) __prev; int __cmp;					\
+({ __typeof (*mem) __prev attribute_unused; int __cmp attribute_unused;	\
    __arch_compare_and_exchange_xxx_16_int(mem, new, old, rel, acq);	\
    (__typeof (*mem))__prev; })
 
 #define __arch_compare_and_exchange_val_32_int(mem, new, old, rel, acq) \
-({ __typeof (*mem) __prev; int __cmp;					\
+({ __typeof (*mem) __prev attribute_unused; int __cmp attribute_unused;	\
    __arch_compare_and_exchange_xxx_32_int(mem, new, old, rel, acq);	\
    (__typeof (*mem))__prev; })
 
 #define __arch_compare_and_exchange_val_64_int(mem, new, old, rel, acq) \
-({ __typeof (*mem) __prev; int __cmp;					\
+({ __typeof (*mem) __prev attribute_unused; int __cmp attribute_unused;	\
    __arch_compare_and_exchange_xxx_64_int(mem, new, old, rel, acq);	\
    (__typeof (*mem))__prev; })
 

@@ -12,9 +12,8 @@
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
 /*
  *	ISO C99 Standard: 7.11 Localization	<locale.h>
@@ -124,7 +123,7 @@ struct lconv
 
 
 /* Set and/or return the current locale.  */
-extern char *setlocale (int __category, __const char *__locale) __THROW;
+extern char *setlocale (int __category, const char *__locale) __THROW;
 
 /* Return the numeric/monetary information for the current locale.  */
 extern struct lconv *localeconv (void) __THROW;
@@ -133,7 +132,7 @@ libc_hidden_proto(localeconv)
 __END_NAMESPACE_STD
 
 
-#if defined __USE_XOPEN2K8 && defined __UCLIBC_HAS_LOCALE__
+#if defined __USE_XOPEN2K8 && defined __UCLIBC_HAS_XLOCALE__
 /* The concept of one static locale per category is not very well
    thought out.  Many applications will need to process its data using
    information from several different locales.  Another application is
@@ -145,19 +144,14 @@ __END_NAMESPACE_STD
    Attention: all these functions are *not* standardized in any form.
    This is a proof-of-concept implementation.  */
 
-#ifdef __UCLIBC_HAS_XLOCALE__
 /* Get locale datatype definition.  */
 # include <xlocale.h>
-#endif
-
-/* POSIX 2008 makes locale_t official.  */
-typedef __locale_t locale_t;
 
 /* Return a reference to a data structure representing a set of locale
    datasets.  Unlike for the CATEGORY parameter for `setlocale' the
    CATEGORY_MASK parameter here uses a single bit for each category,
    made by OR'ing together LC_*_MASK bits above.  */
-extern __locale_t newlocale (int __category_mask, __const char *__locale,
+extern __locale_t newlocale (int __category_mask, const char *__locale,
 			     __locale_t __base) __THROW;
 libc_hidden_proto(newlocale)
 

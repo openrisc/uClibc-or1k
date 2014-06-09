@@ -25,8 +25,7 @@ Library General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with the GNU C Library; see the file COPYING.LIB.  If
-not, write to the Free Software Foundation, Inc., 675 Mass Ave,
-Cambridge, MA 02139, USA.  */
+not, see <http://www.gnu.org/licenses/>.  */
 
 #ifndef _BITS_ELF_DSBT_H
 #define _BITS_ELF_DSBT_H
@@ -59,15 +58,10 @@ struct elf32_dsbt_loadseg
 
 struct elf32_dsbt_loadmap {
 	/* Protocol version number, must be zero.  */
-	Elf32_Word version;
-
-	/* Pointer to DSBT */
-	unsigned   *dsbt_table;
-	unsigned   dsbt_size;
-	unsigned   dsbt_index;
+	Elf32_Half version;
 
 	/* number of segments */
-	Elf32_Word nsegs;
+	Elf32_Half nsegs;
 
 	/* The actual memory map.  */
 	struct elf32_dsbt_loadseg segs[0];

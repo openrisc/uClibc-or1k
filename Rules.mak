@@ -27,6 +27,15 @@ endif
 # file named ".config".  Don't mess with this file unless
 # you know what you are doing.
 
+clean_targets := clean realclean distclean \
+	objclean-y headers_clean-y CLEAN_utils
+noconfig_targets := menuconfig config nconfig \
+	oldaskconfig silentoldconfig oldconfig allnoconfig allyesconfig \
+	alldefconfig randconfig defconfig savedefconfig listnewconfig \
+	olddefconfig \
+	xconfig gconfig update-po-config mconf qconf gconf nconf conf \
+	release dist tags help
+
 
 #-----------------------------------------------------------
 # If you are running a cross compiler, you will want to set
@@ -63,7 +72,7 @@ STRIP_FLAGS ?= -x -R .note -R .comment
 
 # Select the compiler needed to build binaries for your development system
 HOSTCC     = gcc
-BUILD_CFLAGS = -Os -Wall
+BUILD_CFLAGS = -Os
 
 #---------------------------------------------------------
 # Nothing beyond this point should ever be touched by mere
@@ -74,10 +83,25 @@ BUILD_CFLAGS = -Os -Wall
 qstrip = $(strip $(subst ",,$(1)))
 #"))
 
+# kconfig stuff
+KCONFIG_CONFIG ?= $(top_builddir).config
+KCONFIG_CONFIG := $(abspath $(KCONFIG_CONFIG))
+export KCONFIG_CONFIG
+KCONFIG_AUTOCONFIG := $(dir $(KCONFIG_CONFIG))include/config/auto.conf
+export KCONFIG_AUTOCONFIG
+KCONFIG_TRISTATE := $(dir $(KCONFIG_CONFIG))include/config/tristate.conf
+export KCONFIG_TRISTATE
+srctree := $(abspath $(top_srcdir))
+export srctree
+KCONFIG_AUTOHEADER := $(dir $(KCONFIG_CONFIG))include/generated/autoconf.h
+export KCONFIG_AUTOHEADER
+Kconfig := $(abspath $(top_srcdir)extra/Configs/Config.in)
+
 # Pull in the user's uClibc configuration
-ifeq ($(filter $(noconfig_targets),$(MAKECMDGOALS)),)
--include $(top_builddir).config
+ifeq ($(filter $(noconfig_targets) clean CLEAN_%,$(MAKECMDGOALS)),)
+-include $(KCONFIG_CONFIG)
 endif
+
 TARGET_ARCH:=$(call qstrip,$(TARGET_ARCH))
 ifeq ($(TARGET_ARCH),)
 ARCH ?= $(shell uname -m | $(SED) -e s/i.86/i386/ \
@@ -93,11 +117,12 @@ endif
 export ARCH
 
 # Make certain these contain a final "/", but no "//"s.
-TARGET_SUBARCH:=$(call qstrip,$(TARGET_SUBARCH))
-RUNTIME_PREFIX:=$(strip $(subst //,/, $(subst ,/, $(call qstrip,$(RUNTIME_PREFIX)))))
-DEVEL_PREFIX:=$(strip $(subst //,/, $(subst ,/, $(call qstrip,$(DEVEL_PREFIX)))))
-MULTILIB_DIR:=$(strip $(subst //,/, $(subst ,/, $(call qstrip,$(MULTILIB_DIR)))))
-KERNEL_HEADERS:=$(strip $(subst //,/, $(subst ,/, $(call qstrip,$(KERNEL_HEADERS)))))
+scrub_path = $(strip $(subst //,/, $(subst ,/, $(call qstrip,$(1)))))
+TARGET_SUBARCH := $(call qstrip,$(TARGET_SUBARCH))
+RUNTIME_PREFIX := $(call scrub_path,$(RUNTIME_PREFIX))
+DEVEL_PREFIX   := $(call scrub_path,$(DEVEL_PREFIX))
+MULTILIB_DIR   := $(call scrub_path,$(MULTILIB_DIR))
+KERNEL_HEADERS := $(call scrub_path,$(KERNEL_HEADERS))
 export RUNTIME_PREFIX DEVEL_PREFIX KERNEL_HEADERS MULTILIB_DIR
 
 
@@ -118,13 +143,19 @@ export MAJOR_VERSION MINOR_VERSION SUBLEVEL VERSION ABI_VERSION LC_ALL
 LIBC := libc
 SHARED_LIBNAME := $(LIBC).so.$(ABI_VERSION)
 UBACKTRACE_DSO := libubacktrace.so.$(ABI_VERSION)
-ifneq ($(findstring  $(TARGET_ARCH) , hppa64 ia64 mips64 powerpc64 s390x sparc64 x86_64 ),)
+
+UCLIBC_LDSO_NAME := ld-uClibc
+ARCH_NATIVE_BIT := 32
+ifneq ($(findstring  $(TARGET_ARCH) , hppa64 ia64 powerpc64 s390x sparc64 x86_64 ),)
 UCLIBC_LDSO_NAME := ld64-uClibc
 ARCH_NATIVE_BIT := 64
 else
-UCLIBC_LDSO_NAME := ld-uClibc
-ARCH_NATIVE_BIT := 32
+ifeq ($(CONFIG_MIPS_N64_ABI),y)
+UCLIBC_LDSO_NAME := ld64-uClibc
+ARCH_NATIVE_BIT := 64
 endif
+endif
+
 UCLIBC_LDSO := $(UCLIBC_LDSO_NAME).so.$(ABI_VERSION)
 NONSHARED_LIBNAME := uclibc_nonshared.a
 libc := $(top_builddir)lib/$(SHARED_LIBNAME)
@@ -170,7 +201,7 @@ check_as=$(shell \
 	if $(CC) -Wa,$(1) -Wa,-Z -c -o /dev/null -xassembler /dev/null > /dev/null 2>&1; \
 	then echo "-Wa,$(1)"; fi)
 check_ld=$(shell \
-	if $(LD) $(1) -o /dev/null -b binary /dev/null > /dev/null 2>&1; \
+	if $(CC) $(LDFLAG-fuse-ld) -Wl,$(1) $(CFLAG_-nostdlib) -o /dev/null -Wl,-b,binary /dev/null > /dev/null 2>&1; \
 	then echo "$(1)"; fi)
 
 # Use variable indirection here so that we can have variable
@@ -221,6 +252,10 @@ endef
 
 ARFLAGS:=cr
 
+# Note: The check for -nostdlib has to be before all calls to check_ld
+$(eval $(call check-gcc-var,-nostdlib))
+LDFLAG-fuse-ld := $(filter -fuse-ld=%,$(EXTRA_UCLIBC_FLAGS))
+# deliberately not named CFLAG-fuse-ld since unchecked and from user
 
 # Flags in OPTIMIZATION are used only for non-debug builds
 
@@ -246,6 +281,7 @@ GCC_VER := $(subst ., ,$(GCC_VER))
 GCC_MAJOR_VER ?= $(word 1,$(GCC_VER))
 #GCC_MINOR_VER ?= $(word 2,$(GCC_VER))
 
+ifneq ($(TARGET_ARCH),arc)
 ifeq ($(GCC_MAJOR_VER),4)
 # shrinks code, results are from 4.0.2
 # 0.36%
@@ -258,7 +294,7 @@ OPTIMIZATION += $(CFLAG_-fno-tree-dominator-opts)
 $(eval $(call check-gcc-var,-fno-strength-reduce))
 OPTIMIZATION += $(CFLAG_-fno-strength-reduce)
 endif
-
+endif
 
 # CPU_CFLAGS-y contain options which are not warnings,
 # not include or library paths, and not optimizations.
@@ -311,7 +347,9 @@ ifeq ($(TARGET_ARCH),i386)
 $(eval $(call check-gcc-var,-fomit-frame-pointer))
 	OPTIMIZATION += $(CFLAG_-fomit-frame-pointer)
 
-ifeq ($(CONFIG_386)$(CONFIG_486)$(CONFIG_586)$(CONFIG_586MMX),y)
+ifeq ($(CONFIG_386)$(CONFIG_486)$(CONFIG_586),y)
+	# TODO: Change this to a gcc version check.  This bug
+	# should be fixed with at least gcc-4.3.
 	# Non-SSE capable processor.
 	# NB: this may make SSE insns segfault!
 	# -O1 -march=pentium3, -Os -msse etc are known to be affected.
@@ -330,18 +368,6 @@ endif
 	#  -falign-jumps: reachable only by a jump
 	# Generic: no alignment at all (smallest code)
 	GCC_FALIGN=$(call check_gcc,-falign-functions=1 -falign-jumps=1 -falign-labels=1 -falign-loops=1,-malign-jumps=1 -malign-loops=1)
-ifeq ($(CONFIG_K7),y)
-	# Align functions to four bytes, use default for jumps and loops (why?)
-	GCC_FALIGN=$(call check_gcc,-falign-functions=4 -falign-labels=1,-malign-functions=4)
-endif
-ifeq ($(CONFIG_CRUSOE),y)
-	# Use compiler's default for functions, jumps and loops (why?)
-	GCC_FALIGN=$(call check_gcc,-falign-functions=0 -falign-labels=1,-malign-functions=0)
-endif
-ifeq ($(CONFIG_CYRIXIII),y)
-	# Use compiler's default for functions, jumps and loops (why?)
-	GCC_FALIGN=$(call check_gcc,-falign-functions=0 -falign-labels=1,-malign-functions=0)
-endif
 	OPTIMIZATION+=$(GCC_FALIGN)
 
 	# Putting each function and data object into its own section
@@ -366,22 +392,6 @@ $(eval $(call check-ld-var,--sort-section=alignment))
 
 	CPU_LDFLAGS-y+=-m32
 	CPU_CFLAGS-y+=-m32
-	CPU_CFLAGS-$(CONFIG_386)+=-march=i386
-	CPU_CFLAGS-$(CONFIG_486)+=-march=i486
-	CPU_CFLAGS-$(CONFIG_ELAN)+=-march=i486
-	CPU_CFLAGS-$(CONFIG_586)+=-march=i586
-	CPU_CFLAGS-$(CONFIG_586MMX)+=$(call check_gcc,-march=pentium-mmx,-march=i586)
-	CPU_CFLAGS-$(CONFIG_686)+=-march=i686
-	CPU_CFLAGS-$(CONFIG_PENTIUMII)+=$(call check_gcc,-march=pentium2,-march=i686)
-	CPU_CFLAGS-$(CONFIG_PENTIUMIII)+=$(call check_gcc,-march=pentium3,-march=i686)
-	CPU_CFLAGS-$(CONFIG_PENTIUM4)+=$(call check_gcc,-march=pentium4,-march=i686)
-	CPU_CFLAGS-$(CONFIG_K6)+=$(call check_gcc,-march=k6,-march=i586)
-	CPU_CFLAGS-$(CONFIG_K7)+=$(call check_gcc,-march=athlon,-march=i686)
-	CPU_CFLAGS-$(CONFIG_CRUSOE)+=-march=i686
-	CPU_CFLAGS-$(CONFIG_WINCHIPC6)+=$(call check_gcc,-march=winchip-c6,-march=i586)
-	CPU_CFLAGS-$(CONFIG_WINCHIP2)+=$(call check_gcc,-march=winchip2,-march=i586)
-	CPU_CFLAGS-$(CONFIG_CYRIXIII)+=$(call check_gcc,-march=c3,-march=i486)
-	CPU_CFLAGS-$(CONFIG_NEHEMIAH)+=$(call check_gcc,-march=c3-2,-march=i686)
 endif
 
 ifeq ($(TARGET_ARCH),sparc)
@@ -397,6 +407,12 @@ ifeq ($(TARGET_ARCH),arm)
 	CPU_CFLAGS-$(COMPILE_IN_THUMB_MODE)+=-mthumb
 endif
 
+ifeq ($(TARGET_ARCH),metag)
+        SYMBOL_PREFIX=_
+        CPU_CFLAGS-$(CONFIG_META_1_2)+=
+        CPU_CFLAGS-$(CONFIG_META_2_1)+=-Wa,-mcpu=metac21
+endif
+
 ifeq ($(TARGET_ARCH),mips)
 	OPTIMIZATION+=-mno-split-addresses
 	CPU_CFLAGS-$(CONFIG_MIPS_ISA_1)+=-mips1
@@ -406,6 +422,7 @@ ifeq ($(TARGET_ARCH),mips)
 	CPU_CFLAGS-$(CONFIG_MIPS_ISA_MIPS32)+=-mips32 -mtune=mips32
 	CPU_CFLAGS-$(CONFIG_MIPS_ISA_MIPS32R2)+=-march=mips32r2 -mtune=mips32r2
 	CPU_CFLAGS-$(CONFIG_MIPS_ISA_MIPS64)+=-mips64 -mtune=mips32
+	CPU_CFLAGS-$(CONFIG_MIPS_ISA_MIPS64R2)+=-mips64r2 -mtune=mips64r2
 	ifeq ($(strip $(ARCH_BIG_ENDIAN)),y)
 		CPU_LDFLAGS-$(CONFIG_MIPS_N64_ABI)+=-Wl,-melf64btsmip
 		CPU_LDFLAGS-$(CONFIG_MIPS_O32_ABI)+=-Wl,-melf32btsmip
@@ -537,22 +554,29 @@ ifeq ($(TARGET_ARCH),c6x)
 	CPU_LDFLAGS-y += $(CPU_CFLAGS)
 endif
 
+ifeq ($(TARGET_ARCH),arc)
+	CPU_CFLAGS-y += -mlock -mswape
+	CPU_CFLAGS-$(CONFIG_ARC_CPU_700) += -mA7
+	CPU_LDFLAGS-y += $(CPU_CFLAGS) -marclinux
+endif
+
 ifeq ($(TARGET_ARCH),or1k)
 endif
 
-# Keep the check_gcc from being needlessly executed
-ifndef PIEFLAG
-export PIEFLAG:=$(call check_gcc,$(PIEFLAG_NAME),$(PICFLAG))
+$(eval $(call check-gcc-var,$(PIEFLAG_NAME)))
+PIEFLAG := $(CFLAG_$(PIEFLAG_NAME))
+ifeq ($(PIEFLAG),)
+PIEFLAG := $(PICFLAG)
 endif
 # We need to keep track of both the CC PIE flag (above) as
 # well as the LD PIE flag (below) because we can't rely on
 # gcc passing -pie if we used -fPIE. We need to directly use -pie
 # instead of -Wl,-pie as gcc picks up the wrong startfile/endfile
-$(eval $(call cache-output-var,LDPIEFLAG,$(LD) --help 2>/dev/null | grep -q -- -pie && echo "-pie"))
+$(eval $(call cache-output-var,LDPIEFLAG,$(CC) -Wl$(comma)--help 2>/dev/null | grep -q -- -pie && echo "-pie"))
 
 # Check for --as-needed support in linker
 ifndef LD_FLAG_ASNEEDED
-_LD_FLAG_ASNEEDED:=$(shell $(LD) --help 2>/dev/null | grep -- --as-needed)
+_LD_FLAG_ASNEEDED:=$(shell $(CC) -Wl,--help 2>/dev/null | grep -- --as-needed)
 ifneq ($(_LD_FLAG_ASNEEDED),)
 export LD_FLAG_ASNEEDED:=--as-needed
 endif
@@ -576,11 +600,18 @@ link.asneeded = $(if $(findstring yy,$(CC_FLAG_ASNEEDED)$(CC_FLAG_NO_ASNEEDED)),
 
 # Check for AS_NEEDED support in linker script (binutils>=2.16.1 has it)
 ifndef ASNEEDED
-export ASNEEDED:=$(shell $(LD) --help 2>/dev/null | grep -q -- --as-needed && echo "AS_NEEDED ( $(UCLIBC_LDSO) )" || echo "$(UCLIBC_LDSO)")
-ifeq ($(UCLIBC_HAS_BACKTRACE),y)
+export ASNEEDED:=$(shell $(CC) -Wl,--help 2>/dev/null | grep -q -- --as-needed && echo "AS_NEEDED ( $(UCLIBC_LDSO) )" || echo "$(UCLIBC_LDSO)")
+
 # Only used in installed libc.so linker script
-UBACKTRACE_FULL_NAME := $(RUNTIME_PREFIX)lib/$(UBACKTRACE_DSO)
-export UBACKTRACE_ASNEEDED:=$(shell $(LD) --help 2>/dev/null | grep -q -- --as-needed && echo "AS_NEEDED ( $(UBACKTRACE_FULL_NAME) )" || echo "$(UBACKTRACE_FULL_NAME)")
+ifeq ($(UCLIBC_HAS_BACKTRACE),y)
+ifeq ($(HARDWIRED_ABSPATH),y)
+UBACKTRACE_FULL_NAME := $(subst //,/,$(RUNTIME_PREFIX)$(MULTILIB_DIR)/$(UBACKTRACE_DSO))
+else
+UBACKTRACE_FULL_NAME := $(UBACKTRACE_DSO)
+endif
+export UBACKTRACE_ASNEEDED:=$(shell $(CC) -Wl,--help 2>/dev/null | grep -q -- --as-needed && \
+	echo "GROUP ( AS_NEEDED ( $(UBACKTRACE_FULL_NAME) ) )" || \
+	echo "GROUP ( $(UBACKTRACE_FULL_NAME) )")
 else
 export UBACKTRACE_ASNEEDED:=""
 endif
@@ -625,14 +656,17 @@ else
 SSP_CFLAGS := $(SSP_DISABLE_FLAGS)
 endif
 
-$(eval $(call check-gcc-var,-nostdlib))
-
 # Collect all CFLAGS components
-CFLAGS := -include $(top_srcdir)include/libc-symbols.h \
-	$(XWARNINGS) $(CPU_CFLAGS) $(SSP_CFLAGS) \
-	-nostdinc -I$(top_builddir)include -I$(top_srcdir)include -I. \
+CFLAGS := $(XWARNINGS) $(CPU_CFLAGS) $(SSP_CFLAGS) \
+	-nostdinc -I$(top_builddir)include \
+	-I$(top_srcdir)include -include libc-symbols.h \
+	-I$(top_srcdir)libc/sysdeps/linux/$(TARGET_ARCH) \
 	-I$(top_srcdir)libc/sysdeps/linux \
-	-I$(top_srcdir)libc/sysdeps/linux/$(TARGET_ARCH)
+	-I$(top_srcdir)ldso/ldso/$(TARGET_ARCH) \
+	-I$(top_srcdir)ldso/include -I.
+ifneq ($(strip $(UCLIBC_EXTRA_CFLAGS)),"")
+CFLAGS += $(call qstrip,$(UCLIBC_EXTRA_CFLAGS))
+endif
 
 # We need this to be checked within libc-symbols.h
 ifneq ($(HAVE_SHARED),y)
@@ -642,7 +676,7 @@ endif
 $(eval $(call check-ld-var,--warn-once))
 $(eval $(call check-ld-var,--sort-common))
 $(eval $(call check-ld-var,--discard-all))
-LDFLAGS_NOSTRIP:=$(CPU_LDFLAGS-y) -shared \
+LDFLAGS_NOSTRIP:=$(LDFLAG-fuse-ld) $(CPU_LDFLAGS-y) -shared \
 	-Wl,--warn-common $(CFLAG_-Wl--warn-once) -Wl,-z,combreloc
 # binutils-2.16.1 warns about ignored sections, 2.16.91.0.3 and newer are ok
 #$(eval $(call check-ld-var,--gc-sections))
@@ -722,7 +756,7 @@ PTDIR := libpthread/$(PTNAME)
 ifeq ($(UCLIBC_HAS_THREADS_NATIVE),y)
 PTINC:= -I$(top_builddir)$(PTDIR)					\
 	-I$(top_srcdir)$(PTDIR)						\
-	$(if $(TARGET_ARCH),-I$(top_srcdir)$(PTDIR)/sysdeps/unix/sysv/linux/$(TARGET_ARCH)/$(TARGET_SUBARCH)) \
+	$(if $(TARGET_SUBARCH),-I$(top_srcdir)$(PTDIR)/sysdeps/unix/sysv/linux/$(TARGET_ARCH)/$(TARGET_SUBARCH)) \
 	-I$(top_srcdir)$(PTDIR)/sysdeps/unix/sysv/linux/$(TARGET_ARCH)	\
 	-I$(top_builddir)$(PTDIR)/sysdeps/$(TARGET_ARCH)		\
 	-I$(top_srcdir)$(PTDIR)/sysdeps/$(TARGET_ARCH)			\
@@ -730,9 +764,7 @@ PTINC:= -I$(top_builddir)$(PTDIR)					\
 	-I$(top_srcdir)$(PTDIR)/sysdeps/unix/sysv/linux			\
 	-I$(top_srcdir)$(PTDIR)/sysdeps/pthread				\
 	-I$(top_srcdir)$(PTDIR)/sysdeps/pthread/bits			\
-	-I$(top_srcdir)$(PTDIR)/sysdeps/generic				\
-	-I$(top_srcdir)ldso/ldso/$(TARGET_ARCH)				\
-	-I$(top_srcdir)ldso/include
+	-I$(top_srcdir)$(PTDIR)/sysdeps/generic
 #
 # Test for TLS if NPTL support was selected.
 #
@@ -765,12 +797,13 @@ else
 	PTINC  :=
 endif
 CFLAGS += -I$(top_srcdir)libc/sysdeps/linux/common
-CFLAGS += -I$(KERNEL_HEADERS)
 
 #CFLAGS += -iwithprefix include-fixed -iwithprefix include
 $(eval $(call cache-output-var,CC_IPREFIX,$(CC) -print-file-name=include))
 CC_INC := -isystem $(dir $(CC_IPREFIX))include-fixed -isystem $(CC_IPREFIX)
 CFLAGS += $(CC_INC)
+
+CFLAGS += -I$(KERNEL_HEADERS)
 
 ifneq ($(DOASSERTS),y)
 CFLAGS+=-DNDEBUG
@@ -788,7 +821,11 @@ ASFLAGS = $(ASFLAG_--noexecstack)
 
 LIBGCC_CFLAGS ?= $(CFLAGS) $(CPU_CFLAGS-y)
 $(eval $(call cache-output-var,LIBGCC,$(CC) $(LIBGCC_CFLAGS) -print-libgcc-file-name))
+$(eval $(call cache-output-var,LIBGCC_EH,$(CC) $(LIBGCC_CFLAGS) -print-file-name=libgcc_eh.a))
+# with -O0 we (e.g. lockf) might end up with references to
+# _Unwind_Resume, so pull in gcc_eh in this case..
 LIBGCC_DIR:=$(dir $(LIBGCC))
+LIBGCC += $(if $(DODEBUG),$(LIBGCC_EH))
 
 # moved from libpthread/linuxthreads
 ifeq ($(UCLIBC_CTOR_DTOR),y)
@@ -796,4 +833,6 @@ SHARED_START_FILES:=$(top_builddir)lib/crti.o $(LIBGCC_DIR)crtbeginS.o
 SHARED_END_FILES:=$(LIBGCC_DIR)crtendS.o $(top_builddir)lib/crtn.o
 endif
 
-LOCAL_INSTALL_PATH := install_dir
+LOCAL_INSTALL_PATH := $(if $(O),$(O)/)install_dir
+
+PTHREAD_GENERATE_MANGLE ?= -n "s/^.*@@@name@@@\([^@]*\)@@@value@@@[^0-9Xxa-fA-F-]*\([0-9Xxa-fA-F-][0-9Xxa-fA-F-]*\).*@@@end@@@.*\$$/\#define \1 \2/p"

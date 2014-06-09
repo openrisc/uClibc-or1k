@@ -12,9 +12,8 @@
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
 /*
  *	ISO C99 Standard: 7.5 Errors	<errno.h>
@@ -47,6 +46,11 @@ __BEGIN_DECLS
 extern int errno;
 #endif
 
+#ifdef _LIBC
+# ifdef __UCLIBC_HAS___PROGNAME__
+extern const char *__progname, *__progname_full;
+# endif
+#endif
 #if defined __USE_GNU && defined __UCLIBC_HAS_PROGRAM_INVOCATION_NAME__
 
 /* The full and simple forms of the name with which the program was

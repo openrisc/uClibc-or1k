@@ -11,8 +11,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the Free
- *  Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *  License along with this library; if not, see
+ *  <http://www.gnu.org/licenses/>.
  */
 
 /* Aug 1, 2003
@@ -43,7 +43,6 @@
  * standards and from an official C standard defect report.
  */
 
-#define _ISOC99_SOURCE			/* for LLONG_MAX primarily... */
 #include <features.h>
 #include "_stdio.h"
 #include <stdlib.h>
@@ -90,8 +89,6 @@ typedef struct {
 #endif
 
 #endif
-
-extern void _store_inttype(void *dest, int desttype, uintmax_t val);
 
 #if defined(ULLONG_MAX) && (LLONG_MAX > LONG_MAX)
 
@@ -201,7 +198,7 @@ int vscanf(const char * __restrict format, va_list arg)
 
 #ifdef __STDIO_BUFFERS
 
-int vsscanf(__const char *sp, __const char *fmt, va_list ap)
+int vsscanf(const char *sp, const char *fmt, va_list ap)
 {
 	FILE f;
 
@@ -245,7 +242,7 @@ libc_hidden_def(vsscanf)
 
 #elif !defined(__UCLIBC_HAS_WCHAR__)
 
-int vsscanf(__const char *sp, __const char *fmt, va_list ap)
+int vsscanf(const char *sp, const char *fmt, va_list ap)
 {
 	__FILE_vsscanf f;
 
@@ -284,7 +281,7 @@ libc_hidden_def(vsscanf)
 
 #elif defined(__UCLIBC_HAS_GLIBC_CUSTOM_STREAMS__)
 
-int vsscanf(__const char *sp, __const char *fmt, va_list ap)
+int vsscanf(const char *sp, const char *fmt, va_list ap)
 {
 	FILE *f;
 	int rv = EOF;
@@ -380,9 +377,9 @@ int vswscanf(const wchar_t * __restrict str, const wchar_t * __restrict format,
 	FILE f;
 
 	f.__bufstart =
-	f.__bufpos = (char *) str;
+	f.__bufpos = (unsigned char *) str;
 	f.__bufread =
-	f.__bufend = (char *)(str + wcslen(str));
+	f.__bufend = (unsigned char *)(str + wcslen(str));
 	__STDIO_STREAM_DISABLE_GETC(&f);
 	__STDIO_STREAM_DISABLE_PUTC(&f);
 
@@ -429,8 +426,8 @@ libc_hidden_def(vswscanf)
 /*                       npxXoudif eEgG  CS  cs[ */
 /* NOTE: the 'm' flag must come before any convs that support it */
 
-/* NOTE: Ordering is important!  In particular, CONV_LEFTBRACKET
- * must immediately precede CONV_c. */
+/* NOTE: Ordering is important!  The CONV_{C,S,LEFTBRACKET} must map
+   simply to their lowercase equivalents.  */
 
 enum {
 	CONV_n = 0,
@@ -921,7 +918,7 @@ int attribute_hidden __psfs_parse_spec(register psfs_t *psfs)
 				psfs->dataargtype = PA_FLAG_LONG;
 			} else if ((p_m_spec_chars >= CONV_c)
 				&& (psfs->dataargtype & PA_FLAG_LONG)) {
-				p_m_spec_chars -= 3; /* lc -> C, ls -> S, l[ -> ?? */
+				p_m_spec_chars -= CONV_c - CONV_C; /* lc -> C, ls -> S, l[ -> ?? */
 			}
 
 			psfs->conv_num = p_m_spec_chars;

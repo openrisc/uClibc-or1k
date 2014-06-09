@@ -20,6 +20,11 @@
 #define ELFCLASSM	ELFCLASS64
 #endif
 
+#if defined(__arc__)
+#define MATCH_MACHINE(x) (x == EM_ARCOMPACT)
+#define ELFCLASSM      ELFCLASS32
+#endif
+
 #if defined(__arm__) || defined(__thumb__)
 #define MATCH_MACHINE(x) (x == EM_ARM)
 #define ELFCLASSM	ELFCLASS32
@@ -60,6 +65,11 @@
 
 #if defined(__mc68000__)
 #define MATCH_MACHINE(x) (x == EM_68K)
+#define ELFCLASSM	ELFCLASS32
+#endif
+
+#if defined(__metag__)
+#define MATCH_MACHINE(x) (x == EM_METAG)
 #define ELFCLASSM	ELFCLASS32
 #endif
 
@@ -111,6 +121,11 @@
 #define ELFCLASSM	ELFCLASS32
 #endif
 
+#if defined(__xtensa__)
+#define MATCH_MACHINE(x) (x == EM_XTENSA)
+#define ELFCLASSM	ELFCLASS32
+#endif
+
 #ifndef MATCH_MACHINE
 # ifdef __linux__
 #  include <asm/elf.h>
@@ -149,7 +164,7 @@ static int interpreter_already_found = 0;
 
 static __inline__ uint32_t byteswap32_to_host(uint32_t value)
 {
-	if (byteswap == 1) {
+	if (byteswap) {
 		return (bswap_32(value));
 	} else {
 		return (value);
@@ -157,7 +172,7 @@ static __inline__ uint32_t byteswap32_to_host(uint32_t value)
 }
 static __inline__ uint64_t byteswap64_to_host(uint64_t value)
 {
-	if (byteswap == 1) {
+	if (byteswap) {
 		return (bswap_64(value));
 	} else {
 		return (value);
@@ -236,14 +251,7 @@ static int check_elf_header(ElfW(Ehdr) *const ehdr)
 	}
 
 	/* Check if the target endianness matches the host's endianness */
-	byteswap = 0;
-	if (UCLIBC_ENDIAN_HOST == UCLIBC_ENDIAN_LITTLE) {
-		if (ehdr->e_ident[5] == ELFDATA2MSB)
-			byteswap = 1;
-	} else if (UCLIBC_ENDIAN_HOST == UCLIBC_ENDIAN_BIG) {
-		if (ehdr->e_ident[5] == ELFDATA2LSB)
-			byteswap = 1;
-	}
+	byteswap = !(ehdr->e_ident[5] == ELFDATAM);
 
 	/* Be very lazy, and only byteswap the stuff we use */
 	if (byteswap) {

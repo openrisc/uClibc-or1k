@@ -9,29 +9,24 @@
 
 #include <sys/syscall.h>
 #include <unistd.h>
+#if defined __NR_dup3 && !defined __NR_dup2
+# include <fcntl.h>
+extern int __libc_fcntl (int fd, int cmd, ...);
+libc_hidden_proto(__libc_fcntl);
 
-
-#ifdef __NR_dup2
-_syscall2(int, dup2, int, oldfd, int, newfd)
-#elif defined __NR_dup3
-#include <fcntl.h>
-
-int
-dup2 (int fd, int fd2)
+int dup2(int old, int newfd)
 {
-	/* For the degenerate case, check if the fd is valid (by trying to
-	   get the file status flags) and return it, or else return EBADF.  */
-	if (fd == fd2) {
-		int err;
-#ifdef __NR_fcntl64
-		err = INLINE_SYSCALL(fcntl64, 3, fd, F_GETFL, 0);
-#else
-		err = INLINE_SYSCALL(fcntl, 3, fd, F_GETFL, 0);
-#endif
-		return err < 0 ? -1 : fd;
-	}
+	/*
+	 * Check if old fd is valid before we try
+	 * to ducplicate it. Return it if valid
+	 * or EBADF otherwise
+	 */
+	if (old == newfd)
+		return fcntl(old, F_GETFL, 0) < 0 ? -1 : newfd;
 
-	return INLINE_SYSCALL(dup3, 3, fd, fd2, 0);
+	return dup3(old, newfd, 0);
 }
+#else
+_syscall2(int, dup2, int, oldfd, int, newfd)
 #endif
 libc_hidden_def(dup2)

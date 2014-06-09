@@ -37,7 +37,7 @@
 #undef INLINE_SYSCALL
 #define INLINE_SYSCALL(name, nr, args...)				\
   ({ unsigned int _inline_sys_result = INTERNAL_SYSCALL (name, , nr, args);	\
-     if (__builtin_expect (INTERNAL_SYSCALL_ERROR_P (_inline_sys_result, ), 0))	\
+     if (unlikely (INTERNAL_SYSCALL_ERROR_P (_inline_sys_result, )))	\
        {								\
 	 __set_errno (INTERNAL_SYSCALL_ERRNO (_inline_sys_result, ));		\
 	 _inline_sys_result = (unsigned int) -1;				\
@@ -103,7 +103,7 @@
 	register long __B6 __asm__ ("B6") = (long)(arg4);		\
 	register long __A8 __asm__ ("A8") = (long)(arg5);		\
 	register long __g1 __asm__ ("g1") = __NR_clone;			\
-	__asm __volatile (__CLONE_SYSCALL_STRING :			\
+	__asm__ __volatile__ (__CLONE_SYSCALL_STRING :			\
 			  "=r" (__g1), "=r" (__A4), "=r" (__B4)	:	\
 			  "0" (__g1), "1" (__A4), "2" (__B4),		\
 			  "r" (__A6), "r" (__B6), "r" (__A8) :		\

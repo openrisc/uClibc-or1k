@@ -9,8 +9,9 @@
 
 #include <sys/syscall.h>
 #include <sys/vfs.h>
+#include <string.h>
 
-#ifndef __USE_FILE_OFFSET64
+#ifndef __USE_FILE_OFFSET64__
 extern int fstatfs (int __fildes, struct statfs *__buf)
      __THROW __nonnull ((2));
 #else
@@ -22,34 +23,27 @@ extern int __REDIRECT_NTH (fstatfs, (int __fildes, struct statfs *__buf),
 # endif
 #endif
 
-#ifdef __NR_fstatfs
 extern __typeof(fstatfs) __libc_fstatfs attribute_hidden;
-#define __NR___libc_fstatfs __NR_fstatfs
+#ifdef __NR_fstatfs
+# define __NR___libc_fstatfs __NR_fstatfs
 _syscall2(int, __libc_fstatfs, int, fd, struct statfs *, buf)
-#elif defined __NR_fstatfs64
-int __libc_fstatfs(int fd, struct statfs *buf)
+#else
+int __libc_fstatfs (int __fildes, struct statfs *__buf)
 {
-	struct statfs64 st;
-	int err;
+	int err = INLINE_SYSCALL(fstatfs64, 3, __fildes, sizeof(*__buf), __buf);
 
-	err = INLINE_SYSCALL(fstatfs64, 3, fd, sizeof(st), &st);
-	if (err)
-		return err;
-
-	buf->f_type = st.f_type;
-	buf->f_bsize = st.f_bsize;
-	buf->f_blocks = st.f_blocks;
-	buf->f_bfree = st.f_bfree;
-	buf->f_bavail = st.f_bavail;
-	buf->f_files = st.f_files;
-	buf->f_ffree = st.f_ffree;
-	buf->f_fsid = st.f_fsid;
-	buf->f_namelen = st.f_namelen;
-	buf->f_frsize = st.f_frsize;
-
-	return 0;
-}
-#endif
+	if (err == 0) {
+		/* Did we overflow? */
+		if (__buf->__pad1 || __buf->__pad2 || __buf->__pad3 ||
+		    __buf->__pad4 || __buf->__pad5) {
+			__set_errno(EOVERFLOW);
+			return -1;
+		}
+	}
+	return err;
+};
+/* Redefined fstatfs because we need it for backwards compatibility */
+#endif /* __NR_fstatfs */
 
 #if defined __UCLIBC_LINUX_SPECIFIC__
 weak_alias(__libc_fstatfs,fstatfs)

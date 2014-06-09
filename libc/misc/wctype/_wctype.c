@@ -11,8 +11,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the Free
- *  Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *  License along with this library; if not, see
+ *  <http://www.gnu.org/licenses/>.
  */
 
 /*  ATTENTION!   ATTENTION!   ATTENTION!   ATTENTION!   ATTENTION!
@@ -39,10 +39,6 @@
 
 #if defined(__LOCALE_C_ONLY) && defined(__UCLIBC_DO_XLOCALE)
 # error xlocale functionality is not supported in stub locale mode.
-#endif
-
-#ifdef __UCLIBC_HAS_XLOCALE__
-# include <xlocale.h>
 #endif
 
 /* We know wide char support is enabled.  We wouldn't be here otherwise. */

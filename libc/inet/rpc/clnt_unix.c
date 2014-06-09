@@ -46,24 +46,15 @@
  * Now go hang yourself.
  */
 
-#define __FORCE_GLIBC
-#include <features.h>
-
 #include <netdb.h>
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <rpc/rpc.h>
+#include "rpc_private.h"
 #include <sys/uio.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <rpc/pmap_clnt.h>
-#ifdef USE_IN_LIBIO
-# include <wchar.h>
-#endif
-
-
-extern u_long _create_xid (void) attribute_hidden;
 
 #define MCALL_MSG_SIZE 24
 
@@ -128,13 +119,7 @@ clntunix_create (struct sockaddr_un *raddr, u_long prog, u_long vers,
   if (h == NULL || ct == NULL)
     {
       struct rpc_createerr *ce = &get_rpc_createerr ();
-#ifdef USE_IN_LIBIO
-      if (_IO_fwide (stderr, 0) > 0)
-	(void) fwprintf (stderr, L"%s",
-			   _("clntunix_create: out of memory\n"));
-      else
-#endif
-	(void) fputs (_("clntunix_create: out of memory\n"), stderr);
+      (void) fputs (_("clntunix_create: out of memory\n"), stderr);
       ce->cf_stat = RPC_SYSTEMERROR;
       ce->cf_error.re_errno = ENOMEM;
       goto fooy;

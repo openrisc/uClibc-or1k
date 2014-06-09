@@ -13,9 +13,8 @@
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
 #ifndef _ELF_H
 #define	_ELF_H 1
@@ -148,8 +147,8 @@ typedef struct
 #define ELFOSABI_SYSV		0	/* Alias.  */
 #define ELFOSABI_HPUX		1	/* HP-UX */
 #define ELFOSABI_NETBSD		2	/* NetBSD.  */
-#define ELFOSABI_LINUX		3	/* Linux.  */
-#define ELFOSABI_HURD		4	/* GNU/Hurd */
+#define ELFOSABI_GNU		3	/* Object uses GNU ELF extensions.  */
+#define ELFOSABI_LINUX		ELFOSABI_GNU	/* Compatibility alias.  */
 #define ELFOSABI_SOLARIS	6	/* Sun Solaris.  */
 #define ELFOSABI_AIX		7	/* IBM AIX.  */
 #define ELFOSABI_IRIX		8	/* SGI Irix.  */
@@ -260,6 +259,7 @@ typedef struct
 #define EM_PJ		91		/* picoJava */
 #define EM_OR1K		92		/* OpenRISC 32-bit embedded processor */
 #define EM_ARC_A5	93		/* ARC Cores Tangent-A5 */
+#define EM_ARCOMPACT	93		/* ARCompact ISA based Cores: ARC 700 */
 #define EM_XTENSA	94		/* Tensilica Xtensa Architecture */
 #define EM_IP2K		101		/* Ubicom IP2022 micro controller */
 #define EM_CR		103		/* National Semiconductor CompactRISC */
@@ -281,6 +281,9 @@ typedef struct
    Normally, each entity or maintainer responsible for a machine with an
    unofficial e_machine number should eventually ask registry@caldera.com for
    an officially blessed number to be added to the list above.  */
+
+/* Imagination Technologies Meta */
+#define EM_METAG        174
 
 /* picoJava */
 #define EM_PJ_OLD	99
@@ -3133,6 +3136,110 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_MICROBLAZE_GOTOFF_32 20  /* offset relative to GOT */
 #define R_MICROBLAZE_COPY 21  /* runtime copy */
 #define R_MICROBLAZE_NUM 22
+
+/* Meta relocations */
+#define R_METAG_HIADDR16                 0
+#define R_METAG_LOADDR16                 1
+#define R_METAG_ADDR32                   2
+#define R_METAG_NONE                     3
+#define R_METAG_RELBRANCH                4
+#define R_METAG_GETSETOFF                5
+
+/* Backward compatability */
+#define R_METAG_REG32OP1                 6
+#define R_METAG_REG32OP2                 7
+#define R_METAG_REG32OP3                 8
+#define R_METAG_REG16OP1                 9
+#define R_METAG_REG16OP2                10
+#define R_METAG_REG16OP3                11
+#define R_METAG_REG32OP4                12
+
+#define R_METAG_HIOG                    13
+#define R_METAG_LOOG                    14
+
+/* GNU */
+#define R_METAG_GNU_VTINHERIT           30
+#define R_METAG_GNU_VTENTRY             31
+
+/* PIC relocations */
+#define R_METAG_HI16_GOTOFF             32
+#define R_METAG_LO16_GOTOFF             33
+#define R_METAG_GETSET_GOTOFF           34
+#define R_METAG_GETSET_GOT              35
+#define R_METAG_HI16_GOTPC              36
+#define R_METAG_LO16_GOTPC              37
+#define R_METAG_HI16_PLT                38
+#define R_METAG_LO16_PLT                39
+#define R_METAG_RELBRANCH_PLT           40
+#define R_METAG_GOTOFF                  41
+#define R_METAG_PLT                     42
+#define R_METAG_COPY                    43
+#define R_METAG_JMP_SLOT                44
+#define R_METAG_RELATIVE                45
+#define R_METAG_GLOB_DAT                46
+
+/* TLS relocations */
+#define R_METAG_TLS_TPOFF               56
+#define R_METAG_TLS_DTPMOD              57
+#define R_METAG_TLS_DTPOFF              58
+
+/* ARCompact specific relocs */
+#define R_ARC_NONE		0x0
+#define R_ARC_8			0x1
+#define R_ARC_16		0x2
+#define R_ARC_24		0x3
+#define R_ARC_32		0x4
+#define R_ARC_B26		0x5
+#define R_ARC_B22_PCREL		0x6
+#define R_ARC_H30		0x7
+#define R_ARC_N8		0x8
+#define R_ARC_N16		0x9
+#define R_ARC_N24		0xA
+#define R_ARC_N32		0xB
+#define R_ARC_SDA		0xC
+#define R_ARC_SECTOFF		0xD
+#define R_ARC_S21H_PCREL	0xE
+#define R_ARC_S21W_PCREL	0xF
+#define R_ARC_S25H_PCREL	0x10
+#define R_ARC_S25W_PCREL	0x11
+#define R_ARC_SDA32		0x12
+#define R_ARC_SDA_LDST		0x13
+#define R_ARC_SDA_LDST1		0x14
+#define R_ARC_SDA_LDST2		0x15
+#define R_ARC_SDA16_LD		0x16
+#define R_ARC_SDA16_LD1		0x17
+#define R_ARC_SDA16_LD2		0x18
+#define R_ARC_S13_PCREL		0x19
+#define R_ARC_W			0x1A
+#define R_ARC_32_ME		0x1B
+#define R_ARC_N32_ME		0x1C
+#define R_ARC_SECTOFF_ME	0x1D
+#define R_ARC_SDA32_ME		0x1E
+#define R_ARC_W_ME		0x1F
+#define R_ARC_H30_ME		0x20
+#define R_ARC_SECTOFF_U8	0x21
+#define R_ARC_SECTOFF_S9	0x22
+#define R_AC_SECTOFF_U8		0x23
+#define R_AC_SECTOFF_U8_1	0x24
+#define R_AC_SECTOFF_U8_2	0x25
+#define R_AC_SECTOFF_S9		0x26
+#define R_AC_SECTOFF_S9_1	0x27
+#define R_AC_SECTOFF_S9_2	0x28
+#define R_ARC_SECTOFF_ME_1	0x29
+#define R_ARC_SECTOFF_ME_2	0x2A
+#define R_ARC_SECTOFF_1		0x2B
+#define R_ARC_SECTOFF_2		0x2C
+#define R_ARC_PC32		0x32
+#define R_ARC_GOTPC32		0x33
+#define R_ARC_PLT32		0x34
+#define R_ARC_COPY		0x35
+#define R_ARC_GLOB_DAT		0x36
+#define R_ARC_JMP_SLOT		0x37
+#define R_ARC_RELATIVE		0x38
+#define R_ARC_GOTOFF		0x39
+#define R_ARC_GOTPC		0x3A
+#define R_ARC_GOT32		0x3B
+#define R_ARC_NUM		0x3C
 
 /* OpenRISC 1000 specific relocs */
 #define R_OR1K_NONE		0

@@ -11,8 +11,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the Free
- *  Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *  License along with this library; if not, see
+ *  <http://www.gnu.org/licenses/>.
  */
 
 /* Nov. 1, 2002
@@ -85,19 +85,17 @@
 #endif
 #endif
 
-/* Need to include this before locale.h and xlocale.h! */
+/* Need to include this before locale.h! */
 #include <bits/uClibc_locale.h>
 
 #undef CODESET_LIST
 #define CODESET_LIST			(__locale_mmap->codeset_list)
 
 #ifdef __UCLIBC_HAS_XLOCALE__
-#include <xlocale.h>
 #include <locale.h>
 #else /* __UCLIBC_HAS_XLOCALE__ */
 /* We need this internally... */
 #define __UCLIBC_HAS_XLOCALE__ 1
-#include <xlocale.h>
 #include <locale.h>
 #undef __UCLIBC_HAS_XLOCALE__
 #endif /* __UCLIBC_HAS_XLOCALE__ */
@@ -908,7 +906,6 @@ void attribute_hidden _locale_init_l(__locale_t base)
 	_locale_set_l((unsigned char*) C_LOCALE_SELECTOR, base);
 }
 
-void _locale_init(void) attribute_hidden;
 void _locale_init(void)
 {
 	/* TODO: mmap the locale file  */
@@ -1396,6 +1393,7 @@ __locale_t weak_const_function __curlocale(void)
 {
 	return __curlocale_var; /* This is overriden by the thread version. */
 }
+libc_hidden_weak(__curlocale)
 
 __locale_t weak_function __curlocale_set(__locale_t newloc)
 {
@@ -1404,6 +1402,7 @@ __locale_t weak_function __curlocale_set(__locale_t newloc)
 	__curlocale_var = newloc;
 	return oldloc;
 }
+libc_hidden_weak(__curlocale_set)
 
 #endif
 

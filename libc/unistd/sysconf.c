@@ -14,11 +14,11 @@
 
    You should have received a copy of the GNU Library General Public
    License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   see <http://www.gnu.org/licenses/>.  */
 
 #define _XOPEN_SOURCE  500
 #include <features.h>
+#include <ctype.h>
 #include <errno.h>
 #include <limits.h>
 #include <grp.h>
@@ -981,20 +981,9 @@ long int sysconf(int name)
 #endif
 
     case _SC_MONOTONIC_CLOCK:
-#ifdef __NR_clock_getres
-    /* Check using the clock_getres system call.  */
-# ifdef __UCLIBC_HAS_THREADS_NATIVE__
-    {
-      struct timespec ts;
-      INTERNAL_SYSCALL_DECL (err);
-      int r;
-      r = INTERNAL_SYSCALL (clock_getres, err, 2, CLOCK_MONOTONIC, &ts);
-      return INTERNAL_SYSCALL_ERROR_P (r, err) ? -1 : _POSIX_VERSION;
-    }
-# elif defined __UCLIBC_HAS_REALTIME__
+#if defined __UCLIBC_HAS_REALTIME__ && defined __NR_clock_getres
       if (clock_getres(CLOCK_MONOTONIC, NULL) >= 0)
         return _POSIX_VERSION;
-# endif
 #endif
       RETURN_NEG_1;
 

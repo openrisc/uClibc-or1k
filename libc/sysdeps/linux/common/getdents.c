@@ -4,21 +4,17 @@
  * Licensed under the LGPL v2.1, see the file COPYING.LIB in this tarball.
  */
 
-#include <assert.h>
-#include <errno.h>
-#include <dirent.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/param.h>
-#include <sys/types.h>
 #include <sys/syscall.h>
-#include <bits/kernel_types.h>
-#include <bits/kernel-features.h>
-#include <bits/uClibc_alloc.h>
+#include <bits/wordsize.h>
 
 #if !(defined __UCLIBC_HAS_LFS__ && defined __NR_getdents64 && __WORDSIZE == 64)
+
+#include <dirent.h>
+#include <string.h>
+#include <sys/types.h>
+#include <bits/kernel_types.h>
+#include <bits/kernel-features.h>
+
 /* If the condition above is met, __getdents is defined as an alias
  * for __getdents64 (see getdents64.c). Otherwise...
  */
@@ -29,10 +25,7 @@
  * See __ASSUME_GETDENTS32_D_TYPE below for specific version / arch details.
  */
 
-#ifndef offsetof
-# define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
-#endif
-
+# ifdef __ARCH_HAS_DEPRECATED_SYSCALLS__
 struct kernel_dirent
 {
 	long int d_ino;
@@ -40,23 +33,16 @@ struct kernel_dirent
 	unsigned short int d_reclen;
 	char d_name[256];
 };
+# else
+#  define kernel_dirent dirent
+# endif
 
-ssize_t __getdents (int fd, char *buf, size_t nbytes) attribute_hidden;
-
-#ifdef __NR_getdents
-#define __NR___syscall_getdents __NR_getdents
+# if defined __NR_getdents
+#  define __NR___syscall_getdents __NR_getdents
 static __always_inline _syscall3(int, __syscall_getdents, int, fd, unsigned char *, kdirp, size_t, count)
+# endif
 
-/* Starting with version 2.6.4-rc1 the getdents syscall returns d_type
-   information as well and in between 2.6.5 and 2.6.8 most compat wrappers
-   were fixed too.  Except s390{,x} which was fixed in 2.6.11.  */
-#if (__LINUX_KERNEL_VERSION >= 0x020608 && !defined __s390__) \
-    || (__LINUX_KERNEL_VERSION >= 0x02060b && defined __s390__)
-# define __ASSUME_GETDENTS32_D_TYPE	1
-#endif
-#endif
-
-#if defined __ASSUME_GETDENTS32_D_TYPE
+# if defined __ASSUME_GETDENTS32_D_TYPE && defined __NR_getdents
 
 ssize_t __getdents (int fd, char *buf, size_t nbytes)
 {
@@ -85,7 +71,14 @@ ssize_t __getdents (int fd, char *buf, size_t nbytes)
 	return retval;
 }
 
-#elif ! defined __UCLIBC_HAS_LFS__ || ! defined __NR_getdents64
+# elif ! defined __UCLIBC_HAS_LFS__ || !defined __NR_getdents64
+
+#  include <assert.h>
+#  include <stddef.h>
+#  include <errno.h>
+#  include <unistd.h>
+#  include <sys/param.h>
+#  include <bits/uClibc_alloc.h>
 
 ssize_t __getdents (int fd, char *buf, size_t nbytes)
 {
@@ -97,6 +90,7 @@ ssize_t __getdents (int fd, char *buf, size_t nbytes)
     const size_t size_diff = (offsetof (struct dirent, d_name)
 	    - offsetof (struct kernel_dirent, d_name));
 
+#  ifdef __ARCH_HAS_DEPRECATED_SYSCALLS__
     red_nbytes = MIN (nbytes - ((nbytes /
 		    (offsetof (struct dirent, d_name) + 14)) * size_diff),
 	    nbytes - size_diff);
@@ -105,6 +99,21 @@ ssize_t __getdents (int fd, char *buf, size_t nbytes)
     skdp = kdp = stack_heap_alloc(red_nbytes);
 
     retval = __syscall_getdents(fd, (unsigned char *)kdp, red_nbytes);
+#  else
+
+    dp = (struct dirent *) buf;
+    skdp = kdp = stack_heap_alloc(nbytes);
+
+    retval = INLINE_SYSCALL(getdents64, 3, fd, (unsigned char *)kdp, nbytes);
+    if (retval > 0) {
+	    /* Did we overflow? */
+	    if (kdp->__pad1 || kdp->__pad2) {
+		    __set_errno(EINVAL);
+		    return -1;
+	    }
+    }
+#  endif
+
     if (retval == -1) {
 	stack_heap_free(skdp);
 	return -1;
@@ -146,9 +155,10 @@ ssize_t __getdents (int fd, char *buf, size_t nbytes)
     return (char *) dp - buf;
 }
 
-#elif __WORDSIZE == 32
+# elif __WORDSIZE == 32 && !defined __NR_getdents64
 
-extern __typeof(__getdents) __getdents64 attribute_hidden;
+#  include <stddef.h>
+
 ssize_t __getdents (int fd, char *buf, size_t nbytes)
 {
     struct dirent *dp;
@@ -174,10 +184,10 @@ ssize_t __getdents (int fd, char *buf, size_t nbytes)
     return ret;
 }
 
-#endif
+# endif
 
-#if defined __UCLIBC_HAS_LFS__ && ! defined __NR_getdents64
-attribute_hidden strong_alias(__getdents,__getdents64)
-#endif
+# if defined __UCLIBC_HAS_LFS__ && ! defined __NR_getdents64
+strong_alias(__getdents,__getdents64)
+# endif
 
 #endif

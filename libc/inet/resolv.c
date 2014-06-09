@@ -293,8 +293,6 @@ Domain name in a message can be represented as either:
    - a sequence of labels ending with a pointer
  */
 
-#define __FORCE_GLIBC
-#include <features.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdio_ext.h>
@@ -317,6 +315,7 @@ Domain name in a message can be represented as either:
 #include <sys/utsname.h>
 #include <sys/un.h>
 #include <sys/stat.h>
+#include <sys/param.h>
 #include <bits/uClibc_mutex.h>
 #include "internal/parse_config.h"
 
@@ -410,7 +409,7 @@ typedef union sockaddr46_t {
 } sockaddr46_t;
 
 
-__UCLIBC_MUTEX_EXTERN(__resolv_lock);
+__UCLIBC_MUTEX_EXTERN(__resolv_lock) attribute_hidden;
 
 /* Protected by __resolv_lock */
 extern void (*__res_sync)(void) attribute_hidden;
@@ -570,7 +569,7 @@ extern void __close_nameservers(void) attribute_hidden;
 
 #ifdef L_encodeh
 
-int attribute_hidden __encode_header(struct resolv_header *h, unsigned char *dest, int maxlen)
+int __encode_header(struct resolv_header *h, unsigned char *dest, int maxlen)
 {
 	if (maxlen < HFIXEDSZ)
 		return -1;
@@ -599,7 +598,7 @@ int attribute_hidden __encode_header(struct resolv_header *h, unsigned char *des
 
 #ifdef L_decodeh
 
-void attribute_hidden __decode_header(unsigned char *data,
+void __decode_header(unsigned char *data,
 		struct resolv_header *h)
 {
 	h->id = (data[0] << 8) | data[1];
@@ -623,7 +622,7 @@ void attribute_hidden __decode_header(unsigned char *data,
 /* Encode a dotted string into nameserver transport-level encoding.
    This routine is fairly dumb, and doesn't attempt to compress
    the data */
-int attribute_hidden __encode_dotted(const char *dotted, unsigned char *dest, int maxlen)
+int __encode_dotted(const char *dotted, unsigned char *dest, int maxlen)
 {
 	unsigned used = 0;
 
@@ -661,7 +660,7 @@ int attribute_hidden __encode_dotted(const char *dotted, unsigned char *dest, in
 
 /* Decode a dotted string from nameserver transport-level encoding.
    This routine understands compressed data. */
-int attribute_hidden __decode_dotted(const unsigned char *packet,
+int __decode_dotted(const unsigned char *packet,
 		int offset,
 		int packet_len,
 		char *dest,
@@ -726,7 +725,7 @@ int attribute_hidden __decode_dotted(const unsigned char *packet,
 
 #ifdef L_encodeq
 
-int attribute_hidden __encode_question(const struct resolv_question *q,
+int __encode_question(const struct resolv_question *q,
 		unsigned char *dest,
 		int maxlen)
 {
@@ -754,7 +753,7 @@ int attribute_hidden __encode_question(const struct resolv_question *q,
 
 #ifdef L_encodea
 
-int attribute_hidden __encode_answer(struct resolv_answer *a, unsigned char *dest, int maxlen)
+int __encode_answer(struct resolv_answer *a, unsigned char *dest, int maxlen)
 {
 	int i;
 
@@ -868,7 +867,7 @@ int __form_query(int id,
 		const char *name,
 		int type,
 		unsigned char *packet,
-		int maxlen);
+		int maxlen) attribute_hidden;
 int __form_query(int id,
 		const char *name,
 		int type,
@@ -960,7 +959,7 @@ static char *skip_and_NUL_space(char *p)
 }
 
 /* Must be called under __resolv_lock. */
-void attribute_hidden __open_nameservers(void)
+void __open_nameservers(void)
 {
 	static uint32_t resolv_conf_mtime;
 
@@ -1126,7 +1125,7 @@ void attribute_hidden __open_nameservers(void)
 #ifdef L_closenameservers
 
 /* Must be called under __resolv_lock. */
-void attribute_hidden __close_nameservers(void)
+void __close_nameservers(void)
 {
 	if (__nameserver != (void*) &__local_nameserver)
 		free(__nameserver);
@@ -1234,7 +1233,7 @@ static int __decode_answer(const unsigned char *message, /* packet */
  *      appended. (why the filed is called "dotted" I have no idea)
  *      This is a malloced string. May be NULL because strdup failed.
  */
-int attribute_hidden __dns_lookup(const char *name,
+int __dns_lookup(const char *name,
 		int type,
 		unsigned char **outpacket,
 		struct resolv_answer *a)
@@ -1476,9 +1475,11 @@ int attribute_hidden __dns_lookup(const char *name,
 				}
 				/* no more search domains to try */
 			}
-			/* dont loop, this is "no such host" situation */
-			h_errno = HOST_NOT_FOUND;
-			goto fail1;
+			if (h.rcode != SERVFAIL) {
+				/* dont loop, this is "no such host" situation */
+				h_errno = HOST_NOT_FOUND;
+				goto fail1;
+			}
 		}
 		/* Insert other non-fatal errors here, which do not warrant
 		 * switching to next nameserver */
@@ -1598,7 +1599,7 @@ parser_t * __open_etc_hosts(void)
 #define HALISTOFF (sizeof(char*) * MAXTOKENS)
 #define INADDROFF (HALISTOFF + 2 * sizeof(char*))
 
-int attribute_hidden __read_etc_hosts_r(
+int __read_etc_hosts_r(
 		parser_t * parser,
 		const char *name,
 		int type,
@@ -1712,7 +1713,7 @@ found:
 
 #ifdef L_get_hosts_byname_r
 
-int attribute_hidden __get_hosts_byname_r(const char *name,
+int __get_hosts_byname_r(const char *name,
 		int type,
 		struct hostent *result_buf,
 		char *buf,
@@ -1728,7 +1729,7 @@ int attribute_hidden __get_hosts_byname_r(const char *name,
 
 #ifdef L_get_hosts_byaddr_r
 
-int attribute_hidden __get_hosts_byaddr_r(const char *addr,
+int __get_hosts_byaddr_r(const char *addr,
 		int len,
 		int type,
 		struct hostent *result_buf,
@@ -1779,7 +1780,7 @@ int getnameinfo(const struct sockaddr *sa,
 		unsigned flags)
 {
 	int serrno = errno;
-	unsigned ok;
+	bool ok = 0;
 	struct hostent *hoste = NULL;
 	char domain[256];
 
@@ -1789,16 +1790,15 @@ int getnameinfo(const struct sockaddr *sa,
 	if (sa == NULL || addrlen < sizeof(sa_family_t))
 		return EAI_FAMILY;
 
-	ok = sa->sa_family;
-	if (ok == AF_LOCAL) /* valid */;
+	if (sa->sa_family == AF_LOCAL) /* valid */;
 #ifdef __UCLIBC_HAS_IPV4__
-	else if (ok == AF_INET) {
+	else if (sa->sa_family == AF_INET) {
 		if (addrlen < sizeof(struct sockaddr_in))
 			return EAI_FAMILY;
 	}
 #endif
 #ifdef __UCLIBC_HAS_IPV6__
-	else if (ok == AF_INET6) {
+	else if (sa->sa_family == AF_INET6) {
 		if (addrlen < sizeof(struct sockaddr_in6))
 			return EAI_FAMILY;
 	}
@@ -1806,7 +1806,6 @@ int getnameinfo(const struct sockaddr *sa,
 	else
 		return EAI_FAMILY;
 
-	ok = 0;
 	if (host != NULL && hostlen > 0)
 		switch (sa->sa_family) {
 		case AF_INET:
@@ -1830,21 +1829,18 @@ int getnameinfo(const struct sockaddr *sa,
 
 				if (hoste) {
 					char *c;
-#undef min
-#define min(x,y) (((x) > (y)) ? (y) : (x))
 					if ((flags & NI_NOFQDN)
 					 && (getdomainname(domain, sizeof(domain)) == 0)
 					 && (c = strstr(hoste->h_name, domain)) != NULL
 					 && (c != hoste->h_name) && (*(--c) == '.')
 					) {
 						strncpy(host, hoste->h_name,
-							min(hostlen, (size_t) (c - hoste->h_name)));
-						host[min(hostlen - 1, (size_t) (c - hoste->h_name))] = '\0';
+							MIN(hostlen, (size_t) (c - hoste->h_name)));
+						host[MIN(hostlen - 1, (size_t) (c - hoste->h_name))] = '\0';
 					} else {
 						strncpy(host, hoste->h_name, hostlen);
 					}
 					ok = 1;
-#undef min
 				}
 			}
 
@@ -3436,6 +3432,7 @@ static void res_sync_func(void)
 	 */
 }
 
+/* has to be called under __resolv_lock */
 static int
 __res_vinit(res_state rp, int preinit)
 {
@@ -3444,7 +3441,6 @@ __res_vinit(res_state rp, int preinit)
 	int m = 0;
 #endif
 
-	__UCLIBC_MUTEX_LOCK(__resolv_lock);
 	__close_nameservers();
 	__open_nameservers();
 
@@ -3536,81 +3532,8 @@ __res_vinit(res_state rp, int preinit)
 
 	rp->options |= RES_INIT;
 
-	__UCLIBC_MUTEX_UNLOCK(__resolv_lock);
 	return 0;
 }
-
-static void
-__res_iclose(void)
-{
-	__UCLIBC_MUTEX_LOCK(__resolv_lock);
-	__close_nameservers();
-	__res_sync = NULL;
-#ifdef __UCLIBC_HAS_IPV6__
-	{
-		char *p1 = (char*) &(_res.nsaddr_list[0]);
-		int m = 0;
-		/* free nsaddrs[m] if they do not point to nsaddr_list[x] */
-		while (m < ARRAY_SIZE(_res._u._ext.nsaddrs)) {
-			char *p2 = (char*)(_res._u._ext.nsaddrs[m++]);
-			if (p2 < p1 || (p2 - p1) > sizeof(_res.nsaddr_list))
-				free(p2);
-		}
-	}
-#endif
-	memset(&_res, 0, sizeof(_res));
-	__UCLIBC_MUTEX_UNLOCK(__resolv_lock);
-}
-
-/*
- * This routine is for closing the socket if a virtual circuit is used and
- * the program wants to close it.  This provides support for endhostent()
- * which expects to close the socket.
- *
- * This routine is not expected to be user visible.
- */
-
-void
-res_nclose(res_state statp)
-{
-	__res_iclose();
-}
-
-#ifdef __UCLIBC_HAS_BSD_RES_CLOSE__
-void res_close(void)
-{
-	__res_iclose();
-}
-#endif
-
-/* This needs to be after the use of _res in res_init, above.  */
-#undef _res
-
-#ifndef __UCLIBC_HAS_THREADS__
-/* The resolver state for use by single-threaded programs.
-   This differs from plain `struct __res_state _res;' in that it doesn't
-   create a common definition, but a plain symbol that resides in .bss,
-   which can have an alias.  */
-struct __res_state _res __attribute__((section (".bss")));
-struct __res_state *__resp = &_res;
-#else /* __UCLIBC_HAS_THREADS__ */
-struct __res_state _res __attribute__((section (".bss"))) attribute_hidden;
-
-# if defined __UCLIBC_HAS_TLS__
-#  undef __resp
-__thread struct __res_state *__resp = &_res;
-/*
- * FIXME: Add usage of hidden attribute for this when used in the shared
- *        library. It currently crashes the linker when doing section
- *        relocations.
- */
-extern __thread struct __res_state *__libc_resp
-       __attribute__ ((alias ("__resp"))) attribute_hidden;
-# else
-#  undef __resp
-struct __res_state *__resp = &_res;
-# endif
-#endif /* !__UCLIBC_HAS_THREADS__ */
 
 static unsigned int
 res_randomid(void)
@@ -3657,15 +3580,86 @@ res_init(void)
 	 */
 	if (!_res.id)
 		_res.id = res_randomid();
+
+	__res_sync = NULL;
+	__res_vinit(&_res, 1);
 	__res_sync = res_sync_func;
 
 	__UCLIBC_MUTEX_UNLOCK(__resolv_lock);
 
-	__res_vinit(&_res, 1);
-
 	return 0;
 }
 libc_hidden_def(res_init)
+
+static void
+__res_iclose(res_state statp)
+{
+	struct __res_state * rp = statp;
+	__UCLIBC_MUTEX_LOCK(__resolv_lock);
+	if (rp == NULL)
+		rp = __res_state();
+	__close_nameservers();
+	__res_sync = NULL;
+#ifdef __UCLIBC_HAS_IPV6__
+	{
+		char *p1 = (char*) &(rp->nsaddr_list[0]);
+		unsigned int m = 0;
+		/* free nsaddrs[m] if they do not point to nsaddr_list[x] */
+		while (m < ARRAY_SIZE(rp->_u._ext.nsaddrs)) {
+			char *p2 = (char*)(rp->_u._ext.nsaddrs[m++]);
+			if (p2 < p1 || (p2 - p1) > (signed)sizeof(rp->nsaddr_list))
+				free(p2);
+		}
+	}
+#endif
+	memset(rp, 0, sizeof(struct __res_state));
+	__UCLIBC_MUTEX_UNLOCK(__resolv_lock);
+}
+
+/*
+ * This routine is for closing the socket if a virtual circuit is used and
+ * the program wants to close it.  This provides support for endhostent()
+ * which expects to close the socket.
+ *
+ * This routine is not expected to be user visible.
+ */
+
+void
+res_nclose(res_state statp)
+{
+	__res_iclose(statp);
+}
+
+#ifdef __UCLIBC_HAS_BSD_RES_CLOSE__
+void res_close(void)
+{
+	__res_iclose(NULL);
+}
+#endif
+
+/* This needs to be after the use of _res in res_init, above.  */
+#undef _res
+
+#ifndef __UCLIBC_HAS_THREADS__
+/* The resolver state for use by single-threaded programs.
+   This differs from plain `struct __res_state _res;' in that it doesn't
+   create a common definition, but a plain symbol that resides in .bss,
+   which can have an alias.  */
+struct __res_state _res __attribute__((section (".bss")));
+struct __res_state *__resp = &_res;
+#else /* __UCLIBC_HAS_THREADS__ */
+struct __res_state _res __attribute__((section (".bss"))) attribute_hidden;
+
+# if defined __UCLIBC_HAS_TLS__
+#  undef __resp
+__thread struct __res_state *__resp = &_res;
+extern __thread struct __res_state *__libc_resp
+       __attribute__ ((alias ("__resp"))) attribute_hidden attribute_tls_model_ie;
+# else
+#  undef __resp
+struct __res_state *__resp = &_res;
+# endif
+#endif /* !__UCLIBC_HAS_THREADS__ */
 
 /*
  * Set up default settings.  If the configuration file exist, the values
@@ -3691,7 +3685,11 @@ libc_hidden_def(res_init)
 int
 res_ninit(res_state statp)
 {
-	return __res_vinit(statp, 0);
+	int ret;
+	__UCLIBC_MUTEX_LOCK(__resolv_lock);
+	ret = __res_vinit(statp, 0);
+	__UCLIBC_MUTEX_UNLOCK(__resolv_lock);
+	return ret;
 }
 
 #endif /* L_res_init */
@@ -3744,11 +3742,10 @@ int res_query(const char *dname, int class, int type,
 
 	free(a.dotted);
 
-	if (a.atype == type) { /* CNAME */
-		if (i > anslen)
-			i = anslen;
-		memcpy(answer, packet, i);
-	}
+	if (i > anslen)
+		i = anslen;
+	memcpy(answer, packet, i);
+
 	free(packet);
 	return i;
 }
@@ -4231,7 +4228,7 @@ int res_mkquery(int op, const char *dname, int class, int type,
 	hp = (HEADER *) buf;
 	hp->id = getpid() & 0xffff;
 	hp->opcode = op;
-	hp->rd = (_res.options & RES_RECURSE) != 0U;
+	hp->rd = (_res_options & RES_RECURSE) != 0U;
 	hp->rcode = NOERROR;
 
 	cp = buf + HFIXEDSZ;

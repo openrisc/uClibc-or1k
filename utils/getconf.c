@@ -12,10 +12,10 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program; if not, see <http://www.gnu.org/licenses/>.  */
 
 #define _GNU_SOURCE 1
+#include "porting.h"
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
@@ -1052,13 +1052,11 @@ static const struct { const char *name; int num; } specs[] =
   };
 static const int nspecs = sizeof (specs) / sizeof (specs[0]);
 
-#ifdef __UCLIBC_HAS___PROGNAME__
-extern const char *__progname;
-#else
-#define __progname "foo"
+#ifndef __UCLIBC_HAS___PROGNAME__
+static const char *__progname = "getconf";
 #endif
 
-static void
+static attribute_noreturn void
 usage (void)
 {
   fprintf (stderr,
@@ -1070,7 +1068,7 @@ usage (void)
 }
 
 
-static void
+static attribute_noreturn void
 print_all (const char *path)
 {
   register const struct conf *c;

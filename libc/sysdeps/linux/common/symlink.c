@@ -9,14 +9,19 @@
 
 #include <sys/syscall.h>
 #if defined __USE_BSD || defined __USE_UNIX98 || defined __USE_XOPEN2K
-#include <unistd.h>
-#include <fcntl.h>
-# ifdef __NR_symlink
-_syscall2(int, symlink, const char *, oldpath, const char *, newpath)
-# elif defined __NR_symlinkat
+# include <unistd.h>
+
+# if defined __NR_symlinkat && !defined __NR_symlink
+#  include <fcntl.h>
 int symlink(const char *oldpath, const char *newpath)
 {
-	return INLINE_SYSCALL(symlinkat, 3, oldpath, AT_FDCWD, newpath);
+	return symlinkat(oldpath, AT_FDCWD, newpath);
 }
+
+# elif defined(__NR_symlink)
+
+_syscall2(int, symlink, const char *, oldpath, const char *, newpath)
+
 # endif
+
 #endif

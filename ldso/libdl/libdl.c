@@ -32,7 +32,7 @@
 
 #include <ldso.h>
 #include <stdio.h>
-#include <string.h> /* Needed for 'strstr' prototype' */
+#include <string.h>
 #include <stdbool.h>
 #include <bits/uClibc_mutex.h>
 
@@ -42,6 +42,7 @@
 
 #if defined(USE_TLS) && USE_TLS
 #include <ldsodefs.h>
+#include <dl-tls.h>
 extern void _dl_add_to_slotinfo(struct link_map  *l);
 #endif
 
@@ -51,7 +52,6 @@ __UCLIBC_MUTEX_STATIC(_dl_mutex, PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP);
 
 #ifdef SHARED
 # if defined(USE_TLS) && USE_TLS
-# include <dl-tls.h>
 extern struct link_map *_dl_update_slotinfo(unsigned long int req_modid);
 # endif
 
@@ -269,7 +269,7 @@ remove_slotinfo(size_t idx, struct dtv_slotinfo_list *listp, size_t disp,
 #endif
 
 #ifndef __LDSO_NO_CLEANUP__
-void dl_cleanup(void) __attribute__ ((destructor));
+void dl_cleanup(void) attribute_hidden __attribute__ ((destructor));
 void dl_cleanup(void)
 {
 	struct dyn_elf *h, *n;
@@ -296,11 +296,10 @@ static ptrdiff_t _dl_build_local_scope (struct elf_resolve **list,
 	return p - list;
 }
 
-static void *do_dlopen(const char *libname, int flag)
+static void *do_dlopen(const char *libname, int flag, ElfW(Addr) from)
 {
 	struct elf_resolve *tpnt, *tfrom;
 	struct dyn_elf *dyn_chain, *rpnt = NULL, *dyn_ptr, *relro_ptr, *handle;
-	ElfW(Addr) from;
 	struct elf_resolve *tpnt1;
 	void (*dl_brk) (void);
 	int now_flag;
@@ -309,7 +308,9 @@ static void *do_dlopen(const char *libname, int flag)
 	struct elf_resolve **init_fini_list;
 	static bool _dl_init;
 	struct elf_resolve **local_scope;
+#ifdef SHARED
 	struct r_scope_elem *ls;
+#endif
 #if defined(USE_TLS) && USE_TLS
 	bool any_tls = false;
 #endif
@@ -319,8 +320,6 @@ static void *do_dlopen(const char *libname, int flag)
 		_dl_error_number = LD_BAD_HANDLE;
 		return NULL;
 	}
-
-	from = (ElfW(Addr)) __builtin_return_address(0);
 
 	if (!_dl_init) {
 		_dl_init = true;
@@ -335,7 +334,7 @@ static void *do_dlopen(const char *libname, int flag)
 # ifdef __SUPPORT_LD_DEBUG__
 	_dl_debug = getenv("LD_DEBUG");
 	if (_dl_debug) {
-		if (_dl_strstr(_dl_debug, "all")) {
+		if (strstr(_dl_debug, "all")) {
 			_dl_debug_detail = _dl_debug_move = _dl_debug_symbols
 				= _dl_debug_reloc = _dl_debug_bindings = _dl_debug_nofixups = (void*)1;
 		} else {
@@ -377,7 +376,7 @@ static void *do_dlopen(const char *libname, int flag)
 	if (getenv("LD_BIND_NOW"))
 		now_flag = RTLD_NOW;
 
-#if !defined SHARED && defined __LDSO_LIBRARY_PATH__
+#if !defined SHARED && defined __LDSO_LD_LIBRARY_PATH__
 	/* When statically linked, the _dl_library_path is not yet initialized */
 	_dl_library_path = getenv("LD_LIBRARY_PATH");
 #endif
@@ -393,7 +392,7 @@ static void *do_dlopen(const char *libname, int flag)
 		return NULL;
 	}
 	dyn_chain = (struct dyn_elf *) malloc(sizeof(struct dyn_elf));
-	_dl_memset(dyn_chain, 0, sizeof(struct dyn_elf));
+	memset(dyn_chain, 0, sizeof(struct dyn_elf));
 	dyn_chain->dyn = tpnt;
 	tpnt->rtld_flags |= (flag & RTLD_GLOBAL);
 
@@ -444,7 +443,7 @@ static void *do_dlopen(const char *libname, int flag)
 
 				/* This list is for dlsym() and relocation */
 				dyn_ptr->next = (struct dyn_elf *) malloc(sizeof(struct dyn_elf));
-				_dl_memset (dyn_ptr->next, 0, sizeof (struct dyn_elf));
+				memset (dyn_ptr->next, 0, sizeof (struct dyn_elf));
 				dyn_ptr = dyn_ptr->next;
 				dyn_ptr->dyn = tpnt1;
 				/* Used to record RTLD_LOCAL scope */
@@ -544,11 +543,18 @@ static void *do_dlopen(const char *libname, int flag)
 	 * to the GOT tables.  We need to do this in reverse order so that COPY
 	 * directives work correctly */
 
-	/* Get the tail of the list */
+#ifdef SHARED
+	/*
+	 * Get the tail of the list.
+	 * In the static case doesn't need to extend the global scope, it is
+	 * ready to be used as it is, because _dl_loaded_modules already points
+	 * to the dlopened library.
+	 */
 	for (ls = &_dl_loaded_modules->symbol_scope; ls && ls->next; ls = ls->next);
 
 	/* Extend the global scope by adding the local scope of the dlopened DSO. */
 	ls->next = &dyn_chain->dyn->symbol_scope;
+#endif
 #ifdef __mips__
 	/*
 	 * Relocation of the GOT entries for MIPS have to be done
@@ -661,7 +667,8 @@ void *dlopen(const char *libname, int flag)
 	void *ret;
 
 	__UCLIBC_MUTEX_CONDITIONAL_LOCK(_dl_mutex, 1);
-	ret = do_dlopen(libname, flag);
+	ret = do_dlopen(libname, flag,
+			(ElfW(Addr)) __builtin_return_address(0));
 	__UCLIBC_MUTEX_CONDITIONAL_UNLOCK(_dl_mutex, 1);
 
 	return ret;
@@ -671,7 +678,7 @@ static void *do_dlsym(void *vhandle, const char *name, void *caller_address)
 {
 	struct elf_resolve *tpnt, *tfrom;
 	struct dyn_elf *handle;
-	ElfW(Addr) from;
+	ElfW(Addr) from = 0;
 	struct dyn_elf *rpnt;
 	void *ret;
 	struct symbol_ref sym_ref = { NULL, NULL };
@@ -729,7 +736,13 @@ static void *do_dlsym(void *vhandle, const char *name, void *caller_address)
 	tpnt = NULL;
 	if (handle == _dl_symbol_tables)
 		tpnt = handle->dyn; /* Only search RTLD_GLOBAL objs if global object */
-	ret = _dl_find_hash(name2, &handle->dyn->symbol_scope, tpnt, ELF_RTYPE_CLASS_DLSYM, &sym_ref);
+
+	do {
+		ret = _dl_find_hash(name2, &handle->dyn->symbol_scope, tpnt, ELF_RTYPE_CLASS_DLSYM, &sym_ref);
+		if (ret != NULL)
+			break;
+		handle = handle->next;
+	} while (from && handle);
 
 #if defined(USE_TLS) && USE_TLS && defined SHARED
 	if (sym_ref.sym && (ELF_ST_TYPE(sym_ref.sym->st_info) == STT_TLS) && (sym_ref.tpnt)) {
@@ -1081,8 +1094,10 @@ char *dlerror(void)
  * Dump information to stderr about the current loaded modules
  */
 #ifdef __USE_GNU
+# if 0
 static const char type[][4] = { "Lib", "Exe", "Int", "Mod" };
 
+/* reimplement this, being a GNU extension it should be the same as on glibc */
 int dlinfo(void)
 {
 	struct elf_resolve *tpnt;
@@ -1109,6 +1124,7 @@ int dlinfo(void)
 	}
 	return 0;
 }
+#endif
 
 static int do_dladdr(const void *__address, Dl_info * __info)
 {

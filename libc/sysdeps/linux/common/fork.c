@@ -8,33 +8,35 @@
  */
 
 #include <sys/syscall.h>
-#include <unistd.h>
-#include <signal.h>
 
-#ifdef __ARCH_USE_MMU__
+#if defined __ARCH_USE_MMU__
+# include <unistd.h>
+extern __typeof(fork) __libc_fork;
+# if defined __NR_fork
+#  include <cancel.h>
+#  define __NR___libc_fork __NR_fork
+_syscall0(pid_t, fork)
 
-#ifdef __NR_clone
-pid_t __libc_fork(void)
+# elif defined __NR_clone  && !defined __NR_fork
+#  include <sys/types.h>
+#  include <signal.h>
+#  include <stddef.h>
+pid_t fork(void)
 {
-	pid_t pid;
-	pid = INLINE_SYSCALL(clone, 4, SIGCHLD, NULL, NULL, NULL);
+	pid_t pid = INLINE_SYSCALL(clone, 4, SIGCHLD, NULL, NULL, NULL);
 
-	if (pid < 0) {
-	        __set_errno (-pid);
-	        return -1;
-	}
+	if (pid < 0)
+		return -1;
 
 	return pid;
-} 
-weak_alias(__libc_fork,fork)
-libc_hidden_weak(fork)
+}
 
-#elif defined __NR_fork
-#define __NR___libc_fork __NR_fork
-extern __typeof(fork) __libc_fork;
-_syscall0(pid_t, __libc_fork)
-weak_alias(__libc_fork,fork)
+# endif
+# ifdef __UCLIBC_HAS_THREADS__
+strong_alias(fork,__libc_fork)
 libc_hidden_weak(fork)
-#endif
+# else
+libc_hidden_def(fork)
+# endif
 
 #endif

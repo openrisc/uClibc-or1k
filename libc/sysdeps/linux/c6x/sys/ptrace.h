@@ -13,9 +13,8 @@
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
 #ifndef _SYS_PTRACE_H
 #define _SYS_PTRACE_H	1
@@ -112,12 +111,6 @@ enum __ptrace_request
   PTRACE_SYSCALL = 24,
 #define PT_SYSCALL PTRACE_SYSCALL
 
-  /* Obtain the load map of the main program or the interpreter of the
-     ptraced process, depending on whether the addr argument is
-     (void*)0 or (void*)1, respectively.  */
-  PTRACE_GETDSBT = 31,
-#define PT_GETDSBT PTRACE_GETDSBT
-
   /* Set ptrace filter options.  */
   PTRACE_SETOPTIONS = 0x4200,
 #define PT_SETOPTIONS PTRACE_SETOPTIONS
@@ -134,9 +127,6 @@ enum __ptrace_request
   PTRACE_SETSIGINFO = 0x4203
 #define PT_SETSIGINFO PTRACE_SETSIGINFO
 };
-
-#define PTRACE_GETDSBT_EXEC      ((void*)0)	/* [addr] request the executable loadmap */
-#define PTRACE_GETDSBT_INTERP    ((void*)1)	/* [addr] request the interpreter loadmap */
 
 /* Options set using PTRACE_SETOPTIONS.  */
 enum __ptrace_setoptions {

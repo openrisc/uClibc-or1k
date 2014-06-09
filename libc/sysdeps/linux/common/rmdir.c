@@ -9,15 +9,15 @@
 
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <fcntl.h>
 
-#if defined(__NR_rmdir)
-_syscall1(int, rmdir, const char *, pathname)
-#elif defined(__NR_unlinkat)
 
-int rmdir(const char * pathname)
+#if defined __NR_unlinkat && !defined __NR_rmdir
+# include <fcntl.h>
+int rmdir(const char *pathname)
 {
-	return INLINE_SYSCALL(unlinkat, 3, AT_FDCWD, pathname, AT_REMOVEDIR);
+	return unlinkat(AT_FDCWD, pathname, AT_REMOVEDIR);
 }
+#else
+_syscall1(int, rmdir, const char *, pathname)
 #endif
 libc_hidden_def(rmdir)

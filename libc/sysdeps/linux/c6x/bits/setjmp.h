@@ -14,12 +14,14 @@
  * for more details.
  *
  * You should have received a copy of the GNU Library General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
+ * along with this program; see the file COPYING.LIB.  If not, see
+ * <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _SETJMP_H
+#ifndef _BITS_SETJMP_H
+#define _BITS_SETJMP_H 1
+
+#if !defined _SETJMP_H && !defined _PTHREAD_H
 # error "Never include <bits/setjmp.h> directly; use <setjmp.h> instead."
 #endif
 
@@ -28,12 +30,4 @@ typedef struct {
 	unsigned long __pc;       /* the return address */
 } __jmp_buf[1];
 
-/* the stack pointer (B15) */
-#define JP_SP 11 
-
-/* Test if longjmp to JMPBUF would unwind the frame
-   containing a local variable at ADDRESS.  */
-#define _JMPBUF_UNWINDS(jmpbuf, address) \
-  ((void *) (address) < (void *) (jmpbuf)->__regs[JP_SP])
-
-
+#endif

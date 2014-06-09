@@ -10,18 +10,30 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <bits/wordsize.h>
-#include <fcntl.h>
 
+#if defined __NR_fchownat && !defined __NR_chown
+# include <fcntl.h>
+int chown(const char *path, uid_t owner, gid_t group)
+{
+	return fchownat(AT_FDCWD, path, owner, group, 0);
+}
 
-#if (__WORDSIZE == 32 && defined(__NR_chown32)) || __WORDSIZE == 64
-# ifdef __NR_chown32
-#  undef __NR_chown
-#  define __NR_chown __NR_chown32
-# endif
+#else
+
+# if (__WORDSIZE == 32 && defined(__NR_chown32)) || __WORDSIZE == 64
+#  ifdef __NR_chown32
+#   undef __NR_chown
+#   define __NR_chown __NR_chown32
+#  endif
 
 _syscall3(int, chown, const char *, path, uid_t, owner, gid_t, group)
 
-#else
+# else
+
+#  define __NR___syscall_chown __NR_chown
+static __inline__ _syscall3(int, __syscall_chown, const char *, path,
+		__kernel_uid_t, owner, __kernel_gid_t, group)
+
 int chown(const char *path, uid_t owner, gid_t group)
 {
 	if (((owner + 1) > (uid_t) ((__kernel_uid_t) - 1U))
@@ -29,12 +41,9 @@ int chown(const char *path, uid_t owner, gid_t group)
 		__set_errno(EINVAL);
 		return -1;
 	}
-# ifdef __NR_chown
-	return INLINE_SYSCALL(chown, 3, path, owner, group);
-# elif defined __NR_fchownat
-	return INLINE_SYSCALL(fchownat, 5, AT_FDCWD, path, owner, group, 0);
-# endif
+	return (__syscall_chown(path, owner, group));
 }
-#endif
+# endif
 
+#endif
 libc_hidden_def(chown)

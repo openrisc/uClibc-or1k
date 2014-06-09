@@ -10,6 +10,7 @@ subdirs += utils
 
 CFLAGS-utils := \
     $(SSP_ALL_CFLAGS) \
+    -I$(top_srcdir)ldso/ldso/$(TARGET_ARCH) \
     -I$(top_srcdir)ldso/include \
     -DUCLIBC_RUNTIME_PREFIX=\"$(RUNTIME_PREFIX)\" \
     -DUCLIBC_LDSO=\"$(UCLIBC_LDSO)\" \
@@ -36,8 +37,7 @@ CFLAGS-ldd := $(CFLAGS-utils-shared) -DBUILDING_LINKAGE
 # Need CFLAGS-utils explicitly, because the source file is not located in utils
 CFLAGS-iconv := $(CFLAGS-utils) \
     $(CFLAGS-utils-shared) \
-    -I$(top_srcdir)libc/misc/wchar \
-    -DL_iconv_main \
+    -I$(top_srcdir)libc/misc/wchar
 
 CFLAGS-locale := $(CFLAGS-utils)
 CFLAGS-getconf :=$(CFLAGS-utils) \
@@ -56,9 +56,11 @@ BUILD_CFLAGS-utils := \
     $(UTILS_CONFIG_FLAGS-y)
 BUILD_CFLAGS-ldconfig.host := \
 				-DBUILDING_LINKAGE \
+				-I$(top_srcdir)ldso/ldso/$(TARGET_ARCH) \
 				-I$(top_srcdir)ldso/include
 BUILD_CFLAGS-ldd.host      := \
 				-DBUILDING_LINKAGE \
+				-I$(top_srcdir)ldso/ldso/$(TARGET_ARCH) \
 				-I$(top_srcdir)ldso/include \
 				-include $(top_srcdir)include/elf.h
 BUILD_CFLAGS-locale.host   := \

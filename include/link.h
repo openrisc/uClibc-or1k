@@ -14,9 +14,8 @@
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
 #ifndef	_LINK_H
 #define	_LINK_H	1
@@ -110,7 +109,7 @@ struct link_map
     char *l_name;		/* Absolute file name object was found in.  */
     ElfW(Dyn) *l_ld;		/* Dynamic section of the shared object.  */
     struct link_map *l_next, *l_prev; /* Chain of loaded objects.  */
-
+#ifdef _LIBC
 #if defined(USE_TLS) && USE_TLS
     /* Thread-local storage related info.  */
 
@@ -133,6 +132,7 @@ struct link_map
     size_t l_tls_modid;
     /* Nonzero if _dl_init_static_tls should be called for this module */
     unsigned int l_need_tls_init:1;
+#endif
 #endif
   };
 

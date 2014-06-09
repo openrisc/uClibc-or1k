@@ -15,9 +15,6 @@
  */
 
 #include <features.h>
-#ifndef __UCLIBC_HAS_THREADS_NATIVE__
-#define	_ERRNO_H
-#endif
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,20 +22,23 @@
 #include <link.h>
 #include <bits/uClibc_page.h>
 #include <paths.h>
-#include <unistd.h>
-#include <asm/errno.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/sysmacros.h>
-#ifdef __UCLIBC_HAS_THREADS_NATIVE__
 #include <errno.h>
+#include <netdb.h>
+#include <stdio.h>
+#ifndef __ARCH_HAS_NO_LDSO__
+#include <fcntl.h>
+#endif
+#ifdef __UCLIBC_HAS_THREADS_NATIVE__
 #include <pthread-functions.h>
 #include <not-cancel.h>
 #include <atomic.h>
 #endif
 #ifdef __UCLIBC_HAS_THREADS__
 #include <pthread.h>
-#endif 
+#endif
+#ifdef __UCLIBC_HAS_LOCALE__
+#include <locale.h>
+#endif
 
 #ifndef SHARED
 void *__libc_stack_end = NULL;
@@ -116,12 +116,6 @@ static __always_inline int not_null_ptr(const void *p)
 /*
  * Prototypes.
  */
-extern int *weak_const_function __errno_location(void);
-extern int *weak_const_function __h_errno_location(void);
-extern void weak_function _stdio_init(void) attribute_hidden;
-#ifdef __UCLIBC_HAS_LOCALE__
-extern void weak_function _locale_init(void) attribute_hidden;
-#endif
 #ifdef __UCLIBC_HAS_THREADS__
 #if !defined (__UCLIBC_HAS_THREADS_NATIVE__) || defined (SHARED)
 extern void weak_function __pthread_initialize_minimal(void);
@@ -146,14 +140,24 @@ extern void (*__fini_array_end []) (void) attribute_hidden;
 # endif
 #endif
 
-attribute_hidden const char *__uclibc_progname = "";
-#ifdef __UCLIBC_HAS_PROGRAM_INVOCATION_NAME__
-const char *program_invocation_short_name = "";
-const char *program_invocation_name = "";
+#ifdef SHARED
+extern int _dl_secure;
 #endif
-#ifdef __UCLIBC_HAS___PROGNAME__
-weak_alias (program_invocation_short_name, __progname)
-weak_alias (program_invocation_name, __progname_full)
+extern size_t _dl_pagesize;
+
+const char *__uclibc_progname = "";
+#if !defined __UCLIBC_HAS___PROGNAME__ && defined __USE_GNU && defined __UCLIBC_HAS_PROGRAM_INVOCATION_NAME__
+# define __progname program_invocation_short_name
+# define __progname_full program_invocation_name
+#endif
+#if defined __UCLIBC_HAS___PROGNAME__ || (defined __USE_GNU && defined __UCLIBC_HAS_PROGRAM_INVOCATION_NAME__)
+const char *__progname = "";
+/* psm: why have a visible __progname_full? */
+const char *__progname_full = "";
+# if defined __UCLIBC_HAS___PROGNAME__ && defined __USE_GNU && defined __UCLIBC_HAS_PROGRAM_INVOCATION_NAME__
+weak_alias (__progname, program_invocation_short_name)
+weak_alias (__progname_full, program_invocation_name)
+# endif
 #endif
 
 /*
@@ -163,7 +167,6 @@ weak_alias (program_invocation_name, __progname_full)
 char **__environ = 0;
 weak_alias(__environ, environ)
 
-/* TODO: don't export __pagesize; we cant now because libpthread uses it */
 size_t __pagesize = 0;
 
 #ifndef O_NOFOLLOW
@@ -188,6 +191,7 @@ static void __check_one_fd(int fd, int mode)
     }
 }
 
+#ifndef SHARED
 static int __check_suid(void)
 {
     uid_t uid, euid;
@@ -204,6 +208,7 @@ static int __check_suid(void)
     return 0; /* we are not suid */
 }
 #endif
+#endif
 
 /* __uClibc_init completely initialize uClibc so it is ready to use.
  *
@@ -218,8 +223,7 @@ static int __check_suid(void)
  * __uClibc_main.
  */
 
-extern void __uClibc_init(void);
-libc_hidden_proto(__uClibc_init)
+extern void __uClibc_init(void) attribute_hidden;
 void __uClibc_init(void)
 {
     /* Don't recurse */
@@ -272,7 +276,6 @@ void __uClibc_init(void)
 	_stdio_init();
 
 }
-libc_hidden_def(__uClibc_init)
 
 #ifdef __UCLIBC_CTOR_DTOR__
 void attribute_hidden (*__app_fini)(void) = NULL;
@@ -280,8 +283,7 @@ void attribute_hidden (*__app_fini)(void) = NULL;
 
 void attribute_hidden (*__rtld_fini)(void) = NULL;
 
-extern void __uClibc_fini(void);
-libc_hidden_proto(__uClibc_fini)
+extern void __uClibc_fini(void) attribute_hidden;
 void __uClibc_fini(void)
 {
 #ifdef __UCLIBC_CTOR_DTOR__
@@ -300,7 +302,6 @@ void __uClibc_fini(void)
     if (__rtld_fini != NULL)
 	(__rtld_fini)();
 }
-libc_hidden_def(__uClibc_fini)
 
 #ifndef SHARED
 extern void __nptl_deallocate_tsd (void) __attribute ((weak));
@@ -319,7 +320,7 @@ void __uClibc_main(int (*main)(int, char **, char **), int argc,
 		    char **argv, void (*app_init)(void), void (*app_fini)(void),
 		    void (*rtld_fini)(void), void *stack_end attribute_unused)
 {
-#ifndef __ARCH_HAS_NO_LDSO__
+#if !defined __ARCH_HAS_NO_LDSO__ && !defined SHARED
     unsigned long *aux_dat;
     ElfW(auxv_t) auxvt[AT_EGID + 1];
 #endif
@@ -345,7 +346,7 @@ void __uClibc_main(int (*main)(int, char **, char **), int argc,
 	__environ = &argv[argc];
     }
 
-#ifndef __ARCH_HAS_NO_LDSO__
+#if !defined __ARCH_HAS_NO_LDSO__ && !defined SHARED
     /* Pull stuff from the ELF header when possible */
     memset(auxvt, 0x00, sizeof(auxvt));
     aux_dat = (unsigned long*)__environ;
@@ -360,12 +361,10 @@ void __uClibc_main(int (*main)(int, char **, char **), int argc,
 	}
 	aux_dat += 2;
     }
-#ifndef SHARED
     /* Get the program headers (_dl_phdr) from the aux vector
        It will be used into __libc_setup_tls. */
 
     _dl_aux_init (auxvt);
-#endif
 #endif
 
     /* We need to initialize uClibc.  If we are dynamically linked this
@@ -374,15 +373,20 @@ void __uClibc_main(int (*main)(int, char **, char **), int argc,
     __uClibc_init();
 
 #ifndef __ARCH_HAS_NO_LDSO__
-    /* Make certain getpagesize() gives the correct answer */
-    __pagesize = (auxvt[AT_PAGESZ].a_un.a_val)? auxvt[AT_PAGESZ].a_un.a_val : PAGE_SIZE;
+    /* Make certain getpagesize() gives the correct answer.
+     * _dl_pagesize is defined into ld.so if SHARED or into libc.a otherwise. */
+    __pagesize = _dl_pagesize;
 
+#ifndef SHARED
     /* Prevent starting SUID binaries where the stdin. stdout, and
      * stderr file descriptors are not already opened. */
     if ((auxvt[AT_UID].a_un.a_val == (size_t)-1 && __check_suid()) ||
 	    (auxvt[AT_UID].a_un.a_val != (size_t)-1 &&
 	    (auxvt[AT_UID].a_un.a_val != auxvt[AT_EUID].a_un.a_val ||
 	     auxvt[AT_GID].a_un.a_val != auxvt[AT_EGID].a_un.a_val)))
+#else
+    if (_dl_secure)
+#endif
     {
 	__check_one_fd (STDIN_FILENO, O_RDONLY | O_NOFOLLOW);
 	__check_one_fd (STDOUT_FILENO, O_RDWR | O_NOFOLLOW);
@@ -391,14 +395,14 @@ void __uClibc_main(int (*main)(int, char **, char **), int argc,
 #endif
 
     __uclibc_progname = *argv;
-#ifdef __UCLIBC_HAS_PROGRAM_INVOCATION_NAME__
+#if defined __UCLIBC_HAS___PROGNAME__ || (defined __USE_GNU && defined __UCLIBC_HAS_PROGRAM_INVOCATION_NAME__)
     if (*argv != NULL) {
-	program_invocation_name = *argv;
-	program_invocation_short_name = strrchr(*argv, '/');
-	if (program_invocation_short_name != NULL)
-	    ++program_invocation_short_name;
+	__progname_full = *argv;
+	__progname = strrchr(*argv, '/');
+	if (__progname != NULL)
+	    ++__progname;
 	else
-	    program_invocation_short_name = program_invocation_name;
+	    __progname = *argv;
     }
 #endif
 

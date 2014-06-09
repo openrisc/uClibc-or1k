@@ -10,17 +10,29 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <bits/wordsize.h>
-#include <fcntl.h>
 
-#if (__WORDSIZE == 32 && defined(__NR_lchown32)) || __WORDSIZE == 64
-# ifdef __NR_lchown32
-#  undef __NR_lchown
-#  define __NR_lchown __NR_lchown32
-# endif
+#if defined __NR_fchownat && !defined __NR_lchown
+# include <fcntl.h>
+int lchown(const char *path, uid_t owner, gid_t group)
+{
+	return fchownat(AT_FDCWD, path, owner, group, AT_SYMLINK_NOFOLLOW);
+}
+
+#else
+
+# if (__WORDSIZE == 32 && defined(__NR_lchown32)) || __WORDSIZE == 64
+#  ifdef __NR_lchown32
+#   undef __NR_lchown
+#   define __NR_lchown __NR_lchown32
+#  endif
 
 _syscall3(int, lchown, const char *, path, uid_t, owner, gid_t, group)
 
-#else
+# else
+
+#  define __NR___syscall_lchown __NR_lchown
+static __inline__ _syscall3(int, __syscall_lchown, const char *, path,
+		__kernel_uid_t, owner, __kernel_gid_t, group)
 
 int lchown(const char *path, uid_t owner, gid_t group)
 {
@@ -29,11 +41,9 @@ int lchown(const char *path, uid_t owner, gid_t group)
 		__set_errno(EINVAL);
 		return -1;
 	}
-# if defined(__NR_lchown)
-	return INLINE_SYSCALL(lchown, 3, path, owner, group);
-# elif defined(__NR_fchownat)
-	return INLINE_SYSCALL(fchownat, 5, AT_FDCWD, path, owner, group, AT_SYMLINK_NOFOLLOW);
-# endif
+	return __syscall_lchown(path, owner, group);
 }
+
+# endif
 
 #endif

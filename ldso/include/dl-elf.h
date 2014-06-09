@@ -5,19 +5,22 @@
  * GNU Lesser General Public License version 2.1 or later.
  */
 
-#ifndef LINUXELF_H
-#define LINUXELF_H
+#ifndef _DL_ELF_H
+#define _DL_ELF_H
 
+#include <features.h>
+#include <bits/wordsize.h>
 #include <dl-string.h> /* before elf.h to get ELF_USES_RELOCA right */
 #include <elf.h>
 #include <link.h>
+#include <dl-defs.h>
+#include <dlfcn.h>
 
-/* Forward declarations for stuff defined in ld_hash.h */
+/* Forward declarations for stuff defined in dl-hash.h */
 struct dyn_elf;
 struct elf_resolve;
 struct r_scope_elem;
 
-#include <dl-defs.h>
 #ifdef __LDSO_CACHE_SUPPORT__
 extern int _dl_map_cache(void);
 extern int _dl_unmap_cache(void);
@@ -29,7 +32,7 @@ static __inline__ void _dl_unmap_cache(void) { }
 #define DL_RESOLVE_SECURE		0x0001
 #define DL_RESOLVE_NOLOAD		0x0002
 
-/* Function prototypes for non-static stuff in readelflib1.c */
+/* Function prototypes for non-static stuff in elfinterp.c */
 extern void _dl_parse_lazy_relocation_information(struct dyn_elf *rpnt,
 	unsigned long rel_addr, unsigned long rel_size);
 extern int _dl_parse_relocation_information(struct dyn_elf *rpnt,
@@ -39,8 +42,6 @@ extern struct elf_resolve * _dl_load_shared_library(unsigned rflags,
 	int trace_loaded_objects);
 extern struct elf_resolve * _dl_load_elf_shared_library(unsigned rflags,
 	struct dyn_elf **rpnt, const char *libname);
-extern struct elf_resolve *_dl_check_if_named_library_is_loaded(const char *full_libname,
-	int trace_loaded_objects);
 extern int _dl_linux_resolve(void);
 extern int _dl_fixup(struct dyn_elf *rpnt, struct r_scope_elem *scope, int flag);
 extern void _dl_protect_relro (struct elf_resolve *l);
@@ -222,11 +223,6 @@ unsigned int __dl_parse_dynamic_info(ElfW(Dyn) *dpnt, unsigned long dynamic_info
 #ifdef __DSBT__
 	/* Get the mapped address of the DSBT base.  */
 	ADJUST_DYN_INFO(DT_DSBT_BASE_IDX, load_off);
-
-	/* Initialize loadmap dsbt info.  */
-	load_off.map->dsbt_table = (void *)dynamic_info[DT_DSBT_BASE_IDX];
-	load_off.map->dsbt_size = dynamic_info[DT_DSBT_SIZE_IDX];
-	load_off.map->dsbt_index = dynamic_info[DT_DSBT_INDEX_IDX];
 #endif
 #undef ADJUST_DYN_INFO
 	return rtld_flags;
@@ -259,4 +255,4 @@ unsigned int __dl_parse_dynamic_info(ElfW(Dyn) *dpnt, unsigned long dynamic_info
 		    (((X) & PF_X) ? PROT_EXEC : 0))
 
 
-#endif	/* LINUXELF_H */
+#endif /* _DL_ELF_H */

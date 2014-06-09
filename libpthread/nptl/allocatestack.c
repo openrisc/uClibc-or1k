@@ -13,9 +13,8 @@
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
 #include <assert.h>
 #include <errno.h>
@@ -646,7 +645,7 @@ allocate_stack (const struct pthread_attr *attr, struct pthread **pdp,
 			prot) != 0)
 	    goto mprot_error;
 #elif defined _STACK_GROWS_UP
-	  if (mprotect ((char *) pd - pd->guardsize,
+	  if (mprotect ((char *) (((uintptr_t) pd - pd->guardsize) & ~pagesize_m1),
 			pd->guardsize - guardsize, prot) != 0)
 	    goto mprot_error;
 #endif

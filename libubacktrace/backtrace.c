@@ -20,6 +20,7 @@
  *
  */
 
+#include <libgcc_s.h>
 #include <execinfo.h>
 #include <dlfcn.h>
 #include <stdlib.h>
@@ -33,20 +34,25 @@ struct trace_arg
   int cnt, size;
 };
 
+#ifdef SHARED
 static _Unwind_Reason_Code (*unwind_backtrace) (_Unwind_Trace_Fn, void *);
 static _Unwind_Ptr (*unwind_getip) (struct _Unwind_Context *);
 
 static void backtrace_init (void)
 {
-	void *handle = dlopen ("libgcc_s.so.1", RTLD_LAZY);
+	void *handle = dlopen (LIBGCC_S_SO, RTLD_LAZY);
 
 	if (handle == NULL
 		|| ((unwind_backtrace = dlsym (handle, "_Unwind_Backtrace")) == NULL)
 		|| ((unwind_getip = dlsym (handle, "_Unwind_GetIP")) == NULL)) {
-		printf("libgcc_s.so.1 must be installed for backtrace to work\n");
+		printf(LIBGCC_S_SO " must be installed for backtrace to work\n");
 		abort();
 	}
 }
+#else
+# define unwind_backtrace _Unwind_Backtrace
+# define unwind_getip _Unwind_GetIP
+#endif
 
 static _Unwind_Reason_Code
 backtrace_helper (struct _Unwind_Context *ctx, void *a)
@@ -71,8 +77,10 @@ int backtrace (void **array, int size)
 {
 	struct trace_arg arg = { .array = array, .size = size, .cnt = -1 };
 
+#ifdef SHARED
 	if (unwind_backtrace == NULL)
 		backtrace_init();
+#endif
 
 	if (size >= 1)
 		unwind_backtrace (backtrace_helper, &arg);

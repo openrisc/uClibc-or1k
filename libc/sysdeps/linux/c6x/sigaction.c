@@ -17,8 +17,7 @@
 
    You should have received a copy of the GNU Library General Public
    License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.
+   see <http://www.gnu.org/licenses/>.
 
    Totally hacked up for uClibc by Erik Andersen <andersen@codepoet.org>
    */
@@ -28,10 +27,11 @@
 #include <string.h>
 #include <sys/syscall.h>
 #include <bits/kernel_sigaction.h>
+#ifdef __UCLIBC_HAS_THREADS_NATIVE__
+# include <pthreadP.h>	/* SIGCANCEL */
+#endif
 
 #define SA_RESTORER	0x04000000
-
-extern __typeof(sigaction) __libc_sigaction;
 
 extern void restore_rt(void) __asm__ ("__restore_rt") attribute_hidden;
 extern void restore(void) __asm__ ("__restore") attribute_hidden;

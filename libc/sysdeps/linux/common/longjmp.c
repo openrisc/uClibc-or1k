@@ -12,23 +12,13 @@
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
 #include <stddef.h>
 #include <setjmp.h>
 #include <signal.h>
 
-
-extern void __longjmp (__jmp_buf __env, int __val) attribute_noreturn;
-libc_hidden_proto(__longjmp)
-
-#ifdef __UCLIBC_HAS_THREADS_NATIVE__
-extern void _longjmp_unwind (jmp_buf env, int val);
-#endif
-
-extern __typeof(longjmp) __libc_longjmp attribute_noreturn;
 /* Set the signal mask to the one specified in ENV, and jump
    to the position specified in ENV, causing the setjmp
    call there to return VAL, or 1 if VAL is 0.  */

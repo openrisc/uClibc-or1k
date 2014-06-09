@@ -149,10 +149,6 @@
 #ifdef __UCLIBC_HAS_WCHAR__
 #include <wchar.h>
 #endif
-#ifdef __UCLIBC_HAS_XLOCALE__
-#include <xlocale.h>
-#endif
-
 
 #ifndef __isleap
 #define __isleap(y) ( !((y) % 4) && ( ((y) % 100) || !((y) % 400) ) )
@@ -212,7 +208,7 @@ typedef struct {
 	char tzname[TZNAME_MAX+1];
 } rule_struct;
 
-__UCLIBC_MUTEX_EXTERN(_time_tzlock);
+__UCLIBC_MUTEX_EXTERN(_time_tzlock) attribute_hidden;
 
 extern rule_struct _time_tzinfo[2] attribute_hidden;
 
@@ -605,11 +601,11 @@ typedef struct ll_tzname_item {
 } ll_tzname_item_t;
 
 /* Structures form a list "UTC" -> "???" -> "tzname1" -> "tzname2"... */
-struct {
+static struct {
 	struct ll_tzname_item *next;
 	char tzname[4];
 } ll_tzname_UNKNOWN = { NULL, "???" };
-const struct {
+static const struct {
 	struct ll_tzname_item *next;
 	char tzname[4];
 } ll_tzname_UTC = { (void*)&ll_tzname_UNKNOWN, "UTC" };
@@ -2102,7 +2098,8 @@ DONE:
 	daylight = !!_time_tzinfo[1].tzname[0];
 	timezone = _time_tzinfo[0].gmt_offset;
 
-#if defined(__UCLIBC_HAS_TZ_FILE__) || defined(__UCLIBC_HAS_TZ_CACHING__)
+#if (defined(__UCLIBC_HAS_TZ_FILE__) && !defined(__UCLIBC_HAS_TZ_FILE_READ_MANY__)) || \
+	defined(__UCLIBC_HAS_TZ_CACHING__)
 FAST_DONE:
 #endif
 	__UCLIBC_MUTEX_UNLOCK(_time_tzlock);

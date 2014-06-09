@@ -13,8 +13,7 @@
 
    You should have received a copy of the GNU Library General Public
    License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   see <http://www.gnu.org/licenses/>.  */
 
 /* March 11, 2002       Manuel Novoa III
  *
@@ -58,7 +57,7 @@ static int direxists (const char *dir)
    for use with mk[s]temp.  Will fail (-1) if DIR is non-null and
    doesn't exist, none of the searched dirs exists, or there's not
    enough space in TMPL. */
-int attribute_hidden ___path_search (char *tmpl, size_t tmpl_len, const char *dir,
+int ___path_search (char *tmpl, size_t tmpl_len, const char *dir,
 	const char *pfx /*, int try_tmpdir*/)
 {
     /*const char *d; */

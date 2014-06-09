@@ -8,37 +8,33 @@
  */
 
 #include <sys/syscall.h>
-#include <utime.h>
 #include <sys/time.h>
-#include <stdlib.h>
-#include <fcntl.h>
 
-#ifdef __NR_utimes
-_syscall2(int, utimes, const char *, file, const struct timeval *, tvp)
-#elif defined __NR_utimensat
-
+#if defined __NR_utimensat && !defined __NR_utimes
+# include <fcntl.h>
+# include <stddef.h>
 int utimes(const char *file, const struct timeval tvp[2])
 {
-	struct timespec ts[2];
-
+	struct timespec ts[2], *times;
 	if (tvp) {
-		if (tvp[0].tv_usec >= 1000000 || tvp[0].tv_usec < 0 ||
-		    tvp[1].tv_usec >= 1000000 || tvp[1].tv_usec < 0)
-			return -EINVAL;
-
-		ts[0].tv_sec = tvp[0].tv_sec;
-		ts[0].tv_nsec = 1000 * tvp[0].tv_usec;
-		ts[1].tv_sec = tvp[1].tv_sec;
-		ts[1].tv_nsec = 1000 * tvp[1].tv_usec;
-
-		return INLINE_SYSCALL(utimensat, 4, AT_FDCWD, file, ts, 0);
+		times = ts;
+		times[0].tv_sec = tvp[0].tv_sec;
+		times[0].tv_nsec = tvp[0].tv_usec * 1000;
+		times[1].tv_sec = tvp[1].tv_sec;
+		times[1].tv_nsec = tvp[1].tv_usec * 1000;
 	} else {
-		return INLINE_SYSCALL(utimensat, 4, AT_FDCWD, file, NULL, 0);
+		times = NULL;
 	}
-}
-#else
-#include <stdlib.h>
 
+	return utimensat(AT_FDCWD, file, times, 0);
+}
+
+#elif defined __NR_utimes
+_syscall2(int, utimes, const char *, file, const struct timeval *, tvp)
+#elif defined __NR_utime
+# define __need_NULL
+# include <stddef.h>
+# include <utime.h>
 
 int utimes(const char *file, const struct timeval tvp[2])
 {
@@ -54,4 +50,7 @@ int utimes(const char *file, const struct timeval tvp[2])
 	return utime(file, times);
 }
 #endif
+
+#if defined __NR_utimensat || defined __NR_utimes || defined __NR_utime
 libc_hidden_def(utimes)
+#endif

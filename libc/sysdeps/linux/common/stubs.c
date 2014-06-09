@@ -94,7 +94,8 @@ make_stub(create_module)
 make_stub(delete_module)
 #endif
 
-#if !defined __NR_epoll_create && defined __UCLIBC_HAS_EPOLL__
+#if !defined __NR_epoll_create && defined __UCLIBC_HAS_EPOLL__ \
+	&& !defined __NR_epoll_create1
 make_stub(epoll_create)
 #endif
 
@@ -106,11 +107,12 @@ make_stub(epoll_ctl)
 make_stub(epoll_pwait)
 #endif
 
-#if !defined __NR_epoll_wait && defined __UCLIBC_HAS_EPOLL__
+#if !defined __NR_epoll_wait && defined __UCLIBC_HAS_EPOLL__ \
+		&& !defined __NR_epoll_pwait
 make_stub(epoll_wait)
 #endif
 
-#if !defined __NR_eventfd && defined __UCLIBC_LINUX_SPECIFIC__
+#if !defined __NR_eventfd && !defined __NR_eventfd2 && defined __UCLIBC_LINUX_SPECIFIC__
 make_stub(eventfd)
 #endif
 
@@ -126,7 +128,7 @@ make_stub(fgetxattr)
 make_stub(flistxattr)
 #endif
 
-#ifndef __NR_fork
+#if !defined __NR_fork && !defined __NR_clone
 make_stub(fork)
 #endif
 
@@ -138,7 +140,8 @@ make_stub(fremovexattr)
 make_stub(fsetxattr)
 #endif
 
-#if !defined __NR_fstatfs && defined __UCLIBC_LINUX_SPECIFIC__
+#if !defined __NR_fstatfs && !defined __NR_fstatfs64 \
+	&& defined __UCLIBC_LINUX_SPECIFIC__
 make_stub(fstatfs)
 #endif
 
@@ -174,7 +177,8 @@ make_stub(init_module)
 make_stub(inotify_add_watch)
 #endif
 
-#if !defined __NR_inotify_init && defined __UCLIBC_LINUX_SPECIFIC__
+#if !defined __NR_inotify_init && defined __UCLIBC_LINUX_SPECIFIC__ \
+		&& !defined __NR_inotify_init1
 make_stub(inotify_init)
 #endif
 
@@ -317,7 +321,8 @@ make_stub(sched_setaffinity)
 make_stub(send)
 #endif
 
-#if !defined __NR_sendfile && defined __UCLIBC_LINUX_SPECIFIC__
+#if !defined __NR_sendfile && !defined __NR_sendfile64 \
+	&& defined __UCLIBC_LINUX_SPECIFIC__
 make_stub(sendfile)
 #endif
 
@@ -443,9 +448,11 @@ make_stub(lutimes)
 # endif
 #endif
 
-#if !defined __NR_utime && !defined __NR_utimes && !defined __NR_utimensat
+#ifndef __NR_utimensat
+#if !defined __NR_utime && !defined __NR_utimes
 /*make_stub(utime) obsoleted */
 make_stub(utimes)
+#endif
 #endif
 
 #if !defined __NR_umount && !defined __NR_umount2 && defined __UCLIBC_LINUX_SPECIFIC__
@@ -458,6 +465,10 @@ make_stub(umount2)
 
 #if !defined __NR_unshare && defined __UCLIBC_LINUX_SPECIFIC__
 make_stub(unshare)
+#endif
+
+#if defined __UCLIBC_SV4_DEPRECATED__ && !defined __NR_ustat
+make_stub(ustat)
 #endif
 
 #if !defined __NR_vhangup && defined __UCLIBC_LINUX_SPECIFIC__

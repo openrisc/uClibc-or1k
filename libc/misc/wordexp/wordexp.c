@@ -16,11 +16,11 @@
 
    You should have received a copy of the GNU Library General Public
    License along with the GNU C Library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   see <http://www.gnu.org/licenses/>.  */
 
 #include <features.h>
 #include <bits/kernel-features.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
@@ -35,6 +35,10 @@
 #include <fnmatch.h>
 #include <glob.h>
 #include <wordexp.h>
+
+#ifndef __ARCH_USE_MMU__
+# define fork vfork
+#endif
 
 #define __WORDEXP_FULL
 

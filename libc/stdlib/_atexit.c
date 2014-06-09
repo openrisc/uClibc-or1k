@@ -40,11 +40,12 @@
 #include <features.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <errno.h>
 #include <atomic.h>
 
 #include <bits/uClibc_mutex.h>
-__UCLIBC_MUTEX_EXTERN(__atexit_lock);
+__UCLIBC_MUTEX_EXTERN(__atexit_lock) attribute_hidden;
 
 
 
@@ -240,6 +241,16 @@ struct exit_function attribute_hidden *__new_exitfn(void)
 
     __UCLIBC_MUTEX_LOCK(__atexit_lock);
 
+	/*
+	 * Reuse free slots at the end of the list.
+	 * This avoids eating memory when dlopen and dlclose modules multiple times.
+	*/
+	while (__exit_count > 0) {
+		if (__exit_function_table[__exit_count-1].type == ef_free) {
+			--__exit_count;
+		} else break;
+	}
+
 #ifdef __UCLIBC_DYNAMIC_ATEXIT__
     /* If we are out of function table slots, make some more */
     if (__exit_slots < __exit_count+1) {
@@ -318,8 +329,7 @@ extern void weak_function _stdio_term(void) attribute_hidden;
 attribute_hidden void (*__exit_cleanup)(int) = 0;
 __UCLIBC_MUTEX_INIT(__atexit_lock, PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP);
 
-extern void __uClibc_fini(void);
-libc_hidden_proto(__uClibc_fini)
+extern void __uClibc_fini(void) attribute_hidden;
 
 /*
  * Normal program termination

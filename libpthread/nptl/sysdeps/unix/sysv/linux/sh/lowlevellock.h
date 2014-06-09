@@ -13,9 +13,8 @@
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
 #ifndef _LOWLEVELLOCK_H
 #define _LOWLEVELLOCK_H	1
@@ -396,9 +395,9 @@ extern int __lll_unlock_wake (int *__futex, int private) attribute_hidden;
 
 #define lll_wait_tid(tid) \
   do {									      \
-    __typeof (tid) *__tid = &(tid);					      \
-    while (*__tid != 0)							      \
-      lll_futex_wait (__tid, *__tid, LLL_SHARED);			      \
+    __typeof (tid) __tid;						      \
+    while ((__tid = (tid)) != 0)						      \
+      lll_futex_wait (&(tid), __tid, LLL_SHARED);			      \
   } while (0)
 
 extern int __lll_timedwait_tid (int *tid, const struct timespec *abstime)
